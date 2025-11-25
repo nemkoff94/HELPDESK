@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+/* Адаптивные кнопки для мобильных */
+@media (max-width: 640px) {
+  button {
+    min-height: 44px;
+  }
+  
+  input, select, textarea {
+    font-size: 16px; /* Предотвращает автозум на iOS при фокусе */
+    min-height: 44px;
+  }
+}
+
+/* Переносы текста и контейнеры */
+@media (max-width: 768px) {
+  .flex-center-mobile {
+    @apply flex flex-col items-stretch gap-2 w-full;
+  }
+  
+  .button-mobile {
+    @apply w-full sm:w-auto;
+  }
+}
+
+/* Хоткей для мобильных: более мягкие тени и улучшенная читаемость */
+@media (max-width: 640px) {
+  .shadow-md {
+    @apply shadow;
+  }
+  
+  .text-lg {
+    @apply text-base;
+  }
+}
