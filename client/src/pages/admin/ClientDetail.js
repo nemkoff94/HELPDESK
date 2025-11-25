@@ -44,6 +44,7 @@ const ClientDetail = () => {
   });
   const [showConfirmDeleteInvoice, setShowConfirmDeleteInvoice] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
+  const [showConfirmDeleteClient, setShowConfirmDeleteClient] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -240,6 +241,18 @@ const ClientDetail = () => {
     }
   };
 
+  const handleDeleteClient = async () => {
+    try {
+      await api.delete(`/clients/${id}`);
+      setShowConfirmDeleteClient(false);
+      alert('Клиент успешно удален');
+      navigate('/admin/clients');
+    } catch (error) {
+      setShowConfirmDeleteClient(false);
+      alert(error.response?.data?.error || 'Ошибка при удалении клиента');
+    }
+  };
+
   const getStatusColor = (status) => {
     switch (status) {
       case 'in_development':
@@ -395,6 +408,12 @@ const ClientDetail = () => {
             >
               Сгенерировать счет (QR)
             </button>
+            <button
+              onClick={() => setShowConfirmDeleteClient(true)}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm sm:text-base w-full sm:w-auto"
+            >
+              Удалить клиента
+            </button>
           </div>
         )}
       </div>
@@ -462,6 +481,19 @@ const ClientDetail = () => {
               cancelText="Отмена"
               onConfirm={confirmDeleteInvoice}
               onCancel={() => { setShowConfirmDeleteInvoice(false); setInvoiceToDelete(null); }}
+            />
+          )}
+          {/* Confirm client deletion modal */}
+          {showConfirmDeleteClient && (
+            <ConfirmModal
+              open={showConfirmDeleteClient}
+              title="Удалить клиента"
+              message="Вы уверены, что хотите удалить этого клиента? Это действие удалит все тикеты, счета, задачи и комментарии, связанные с этим клиентом. Это действие нельзя отменить."
+              confirmText="Удалить"
+              cancelText="Отмена"
+              onConfirm={handleDeleteClient}
+              onCancel={() => setShowConfirmDeleteClient(false)}
+              isDangerous={true}
             />
           )}
         </div>

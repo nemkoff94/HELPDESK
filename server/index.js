@@ -564,6 +564,75 @@ app.put('/api/clients/:id', authenticateToken, requireRole('admin'), (req, res) 
   );
 });
 
+app.delete('/api/clients/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+
+  // Начинаем транзакцию для удаления всех связанных данных
+  db.serialize(() => {
+    // Сначала получаем все счета клиента для удаления файлов
+    db.all('SELECT file_path FROM invoices WHERE client_id = ?', [id], (err, invoices) => {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при удалении клиента' });
+      }
+
+      // Удаляем файлы счетов
+      invoices.forEach((invoice) => {
+        if (invoice.file_path) {
+          const rel = invoice.file_path.startsWith('/') ? invoice.file_path.slice(1) : invoice.file_path;
+          const fullPath = path.join(__dirname, rel);
+          fs.unlink(fullPath, (fsErr) => {
+            if (fsErr) {
+              console.warn('Failed to unlink invoice file:', fullPath, fsErr);
+            }
+          });
+        }
+      });
+
+      // Удаляем все связанные данные клиента
+      // Удаляем комментарии к тикетам
+      db.run('DELETE FROM ticket_comments WHERE ticket_id IN (SELECT id FROM tickets WHERE client_id = ?)', [id], (err) => {
+        if (err) console.error('Error deleting ticket comments:', err);
+
+        // Удаляем тикеты
+        db.run('DELETE FROM tickets WHERE client_id = ?', [id], (err) => {
+          if (err) console.error('Error deleting tickets:', err);
+
+          // Удаляем счета
+          db.run('DELETE FROM invoices WHERE client_id = ?', [id], (err) => {
+            if (err) console.error('Error deleting invoices:', err);
+
+            // Удаляем комментарии к задачам
+            db.run('DELETE FROM task_comments WHERE task_id IN (SELECT id FROM tasks WHERE client_id = ?)', [id], (err) => {
+              if (err) console.error('Error deleting task comments:', err);
+
+              // Удаляем задачи
+              db.run('DELETE FROM tasks WHERE client_id = ?', [id], (err) => {
+                if (err) console.error('Error deleting tasks:', err);
+
+                // Удаляем логин клиента
+                db.run('DELETE FROM client_logins WHERE client_id = ?', [id], (err) => {
+                  if (err) console.error('Error deleting client login:', err);
+
+                  // Удаляем самого клиента
+                  db.run('DELETE FROM clients WHERE id = ?', [id], function(err) {
+                    if (err) {
+                      return res.status(500).json({ error: 'Ошибка при удалении клиента' });
+                    }
+                    if (this.changes === 0) {
+                      return res.status(404).json({ error: 'Клиент не найден' });
+                    }
+                    res.json({ message: 'Клиент и все связанные данные успешно удалены' });
+                  });
+                });
+              });
+            });
+          });
+        });
+      });
+    });
+  });
+});
+
 // Роуты для тикетов
 app.get('/api/tickets', authenticateToken, (req, res) => {
   const userRole = req.user.role;
