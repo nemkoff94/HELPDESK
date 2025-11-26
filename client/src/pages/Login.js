@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loginType, setLoginType] = useState('user'); // 'user' or 'client'
+  const [loginType, setLoginType] = useState('client'); // 'user' or 'client'
   // loginType determines which tab is active; tabs order swapped below
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
