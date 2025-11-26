@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-
 const RenewalCalendarWidget = ({ clientId, api }) => {
   const [widget, setWidget] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [newCustomName, setNewCustomName] = useState('');
+  const [newCustomDate, setNewCustomDate] = useState('');
+  const [isAddingCustom, setIsAddingCustom] = useState(false);
 
   useEffect(() => {
     fetchWidget();
@@ -36,6 +38,25 @@ const RenewalCalendarWidget = ({ clientId, api }) => {
     if (daysUntil < 0) return 'text-red-700 bg-red-50 font-semibold';
     if (daysUntil < 60) return 'text-yellow-700 bg-yellow-50 font-semibold';
     return 'text-gray-600 bg-gray-50';
+  };
+
+  const addCustomUpdate = async () => {
+    if (!newCustomName || !newCustomDate) return;
+    try {
+      setIsAddingCustom(true);
+      await api.post(`/widgets/renewal-calendar/${clientId}/custom-update`, {
+        title: newCustomName,
+        date: newCustomDate,
+      });
+      setNewCustomName('');
+      setNewCustomDate('');
+      await fetchWidget();
+    } catch (error) {
+      console.error('Ошибка при добавлении кастомного обновления:', error);
+      alert(error.response?.data?.error || 'Ошибка при добавлении кастомного обновления');
+    } finally {
+      setIsAddingCustom(false);
+    }
   };
 
   const formatDateDisplay = (dateString) => {
@@ -104,8 +125,57 @@ const RenewalCalendarWidget = ({ clientId, api }) => {
         </div>
       </div>
 
+      {/* Custom updates list (created by admin per client) */}
+      {widget.custom_updates && widget.custom_updates.length > 0 && (
+        <div className="mt-4 space-y-2">
+          <h4 className="text-sm font-medium text-gray-700">Кастомные обновления</h4>
+          <div className="space-y-2">
+            {widget.custom_updates.map((cu) => (
+              <div key={cu.id} className="bg-white rounded p-3 flex justify-between items-center">
+                <div>
+                  <div className="font-medium text-sm">{cu.title}</div>
+                  <div className="text-xs text-gray-500">{formatDateDisplay(cu.date)}</div>
+                </div>
+                <div className={`text-sm px-3 py-1 rounded ${getDateColor(cu.date)}`}>
+                  {getDaysUntil(cu.date) !== null ? (getDaysUntil(cu.date) < 0 ? 'Просрочено' : `${getDaysUntil(cu.date)} дн.`) : '—'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Admin: create custom update for this client */}
+      {widget.can_create_custom_update && (
+        <div className="mt-4 bg-white rounded p-3">
+          <h4 className="text-sm font-medium mb-2">Добавить кастомное обновление</h4>
+          <div className="flex gap-2 items-center">
+            <input
+              type="text"
+              placeholder="Название"
+              value={newCustomName}
+              onChange={(e) => setNewCustomName(e.target.value)}
+              className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+            <input
+              type="date"
+              value={newCustomDate}
+              onChange={(e) => setNewCustomDate(e.target.value)}
+              className="border border-gray-300 rounded px-3 py-2 text-sm"
+            />
+            <button
+              onClick={addCustomUpdate}
+              disabled={!newCustomName || !newCustomDate || isAddingCustom}
+              className="bg-primary-600 text-white px-4 py-2 rounded disabled:opacity-60"
+            >
+              {isAddingCustom ? 'Добавление...' : 'Добавить'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-        <strong>Легенда:</strong> Жёлтый - менее 60 дней, Красный - просрочено
+        <strong>Подсказка:</strong> Жёлтый - менее 60 дней, Красный - просрочено
       </div>
     </div>
   );

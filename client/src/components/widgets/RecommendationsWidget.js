@@ -29,7 +29,16 @@ const RecommendationsWidget = ({ clientId, api }) => {
       setIsAccepting(true);
       await api.post(`/widgets/recommendations/${selectedRecommendation.id}/accept`);
       alert('Рекомендация принята! Создан новый тикет.');
+      // optimistically remove the accepted recommendation from the widget list
+      setWidget((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          recommendations: prev.recommendations ? prev.recommendations.filter((r) => r.id !== selectedRecommendation.id) : [],
+        };
+      });
       setSelectedRecommendation(null);
+      // refresh from server to ensure consistency
       fetchWidget();
     } catch (error) {
       alert(error.response?.data?.error || 'Ошибка при принятии рекомендации');

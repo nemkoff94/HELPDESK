@@ -356,6 +356,16 @@ db.serialize(() => {
     FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
   )`);
 
+  // Кастомные обновления для календаря (создаются администратором для конкретного клиента)
+  db.run(`CREATE TABLE IF NOT EXISTS renewal_custom_updates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    widget_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    date DATE NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (widget_id) REFERENCES renewal_calendar_widgets(id) ON DELETE CASCADE
+  )`);
+
   // Виджет: Рекомендации
   db.run(`CREATE TABLE IF NOT EXISTS recommendations_widgets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1839,7 +1849,27 @@ app.get('/api/widgets/renewal-calendar/:clientId', authenticateToken, (req, res)
       if (err) {
         return res.status(500).json({ error: 'Ошибка при получении виджета' });
       }
-      res.json(widget || null);
+      if (!widget) return res.json(null);
+
+      // Получаем кастомные обновления для этого виджета
+      db.all(
+        'SELECT id, title, date, created_at FROM renewal_custom_updates WHERE widget_id = ? ORDER BY date ASC',
+        [widget.id],
+        (err, customUpdates) => {
+          if (err) {
+            return res.status(500).json({ error: 'Ошибка при получении кастомных обновлений' });
+          }
+
+          // Флаг, разрешающий создание кастомных обновлений — только для администраторов
+          const canCreate = req.user.role === 'admin';
+
+          res.json({
+            ...widget,
+            custom_updates: customUpdates || [],
+            can_create_custom_update: canCreate
+          });
+        }
+      );
     }
   );
 });
@@ -1895,6 +1925,31 @@ app.post('/api/widgets/renewal-calendar/:clientId', authenticateToken, requireRo
       }
     }
   );
+});
+
+// Администратор: добавить кастомное обновление для клиента (календарь)
+app.post('/api/widgets/renewal-calendar/:clientId/custom-update', authenticateToken, requireRole('admin'), (req, res) => {
+  const { clientId } = req.params;
+  const { title, date } = req.body;
+
+  if (!title || !date) {
+    return res.status(400).json({ error: 'Необходимо указать title и date' });
+  }
+
+  // Получаем виджет для клиента
+  db.get('SELECT * FROM renewal_calendar_widgets WHERE client_id = ?', [clientId], (err, widget) => {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (!widget) return res.status(404).json({ error: 'Виджет календаря не найден' });
+
+    db.run(
+      `INSERT INTO renewal_custom_updates (widget_id, title, date) VALUES (?, ?, ?)`,
+      [widget.id, title, date],
+      function(err) {
+        if (err) return res.status(500).json({ error: 'Ошибка при добавлении кастомного обновления' });
+        res.json({ id: this.lastID, message: 'Кастомное обновление добавлено' });
+      }
+    );
+  });
 });
 
 // Виджет: Рекомендации
@@ -2078,9 +2133,17 @@ app.post('/api/widgets/recommendations/:recommendationId/accept', authenticateTo
           if (err) {
             return res.status(500).json({ error: 'Ошибка при создании тикета' });
           }
-          res.json({ 
-            id: this.lastID, 
-            message: 'Рекомендация принята, создан новый тикет' 
+          const ticketId = this.lastID;
+
+          // После успешного создания тикета удаляем рекомендацию из виджета
+          db.run('DELETE FROM recommendations WHERE id = ?', [recommendationId], function(delErr) {
+            if (delErr) {
+              console.error('Ошибка при удалении рекомендации после принятия:', delErr);
+              // Возвращаем успех по тикету, но логируем ошибку удаления
+              return res.json({ id: ticketId, message: 'Рекомендация принята, создан новый тикет (ошибка при удалении рекомендации)' });
+            }
+
+            res.json({ id: ticketId, message: 'Рекомендация принята, создан новый тикет' });
           });
         }
       );
@@ -2245,6 +2308,80 @@ const checkSiteAvailability = async (url, clientId) => {
     };
   }
 };
+
+// Ручной запуск проверки доступности сайта для клиента (разрешено клиенту для своего клиента и администратору)
+app.post('/api/widgets/site-availability/:clientId/check', authenticateToken, async (req, res) => {
+  const { clientId } = req.params;
+  const userRole = req.user.role;
+
+  if (userRole === 'client' && parseInt(clientId) !== req.user.id) {
+    return res.status(403).json({ error: 'Недостаточно прав' });
+  }
+
+  db.get('SELECT * FROM site_availability_widgets WHERE client_id = ?', [clientId], async (err, widget) => {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (!widget) return res.status(404).json({ error: 'Виджет доступности не найден' });
+    if (!widget.enabled) return res.status(400).json({ error: 'Виджет отключен' });
+    if (!widget.site_url) return res.status(400).json({ error: 'Не указан URL сайта' });
+
+    // Ограничение: не чаще 24 часов
+    if (widget.last_check_time) {
+      const last = new Date(widget.last_check_time).getTime();
+      const diff = Date.now() - last;
+      if (diff < 24 * 60 * 60 * 1000) {
+        return res.status(429).json({ error: 'Проверку можно запускать не чаще 1 раза в сутки' });
+      }
+    }
+
+    try {
+      const result = await checkSiteAvailability(widget.site_url, widget.client_id);
+
+      // Удаляем старый скриншот если есть
+      if (widget.last_screenshot_path) {
+        const oldPath = path.join(__dirname, widget.last_screenshot_path.startsWith('/') ? widget.last_screenshot_path.slice(1) : widget.last_screenshot_path);
+        fs.unlink(oldPath, (err) => { if (err) console.warn('Не удалось удалить старый скриншот:', err); });
+      }
+
+      if (result.success) {
+        db.run(
+          `UPDATE site_availability_widgets 
+           SET last_check_time = ?, last_check_status = ?, last_check_message = ?, last_screenshot_path = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [
+            result.timestamp,
+            'success',
+            `Последняя проверка в ${new Date(result.timestamp).toLocaleString('ru-RU')} прошла успешно`,
+            result.filepath,
+            widget.id
+          ],
+          (err) => {
+            if (err) console.error('Ошибка при обновлении виджета после ручной проверки:', err);
+            return res.json({ success: true, message: 'Проверка выполнена', result });
+          }
+        );
+      } else {
+        db.run(
+          `UPDATE site_availability_widgets 
+           SET last_check_time = ?, last_check_status = ?, last_check_message = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [
+            result.timestamp,
+            'error',
+            `Сайт был недоступен в ${new Date(result.timestamp).toLocaleString('ru-RU')}. Ошибка: ${result.error}`,
+            widget.id
+          ],
+          (err) => {
+            if (err) console.error('Ошибка при обновлении виджета после ручной проверки:', err);
+            return res.status(200).json({ success: false, message: 'Проверка выполнена с ошибкой', result });
+          }
+        );
+      }
+    } catch (err) {
+      console.error('Ошибка при ручной проверке сайта:', err);
+      res.status(500).json({ error: 'Ошибка при проверке сайта' });
+    }
+  });
+});
 
 // Крон-задача для проверки доступности сайтов каждый день в 04:00
 const screenshotCron = cron.schedule('0 4 * * *', async () => {
