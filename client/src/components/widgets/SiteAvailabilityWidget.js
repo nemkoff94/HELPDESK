@@ -95,17 +95,6 @@ const SiteAvailabilityWidget = ({ clientId, api }) => {
         )}
       </div>
 
-      {widget.last_screenshot_path && isSuccess && (
-        <div className="mb-3">
-          <p className="text-xs text-gray-600 mb-2">Последний скриншот:</p>
-          <img
-            src={`http://localhost:5001${widget.last_screenshot_path}`}
-            alt="Site screenshot"
-            className="w-full rounded border border-gray-300 max-h-40 object-cover"
-          />
-        </div>
-      )}
-
       {!widget.last_check_time && (
         <div className="text-center py-4 text-gray-600 text-sm">
           Проверка будет проведена в 04:00 (по времени сервера)
@@ -116,3 +105,4 @@ const SiteAvailabilityWidget = ({ clientId, api }) => {
 };
 
 export default SiteAvailabilityWidget;
+
