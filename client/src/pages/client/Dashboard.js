@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import AdCampaignWidget from '../../components/widgets/AdCampaignWidget';
+import RenewalCalendarWidget from '../../components/widgets/RenewalCalendarWidget';
+import RecommendationsWidget from '../../components/widgets/RecommendationsWidget';
+import SiteAvailabilityWidget from '../../components/widgets/SiteAvailabilityWidget';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -151,6 +155,25 @@ const Dashboard = () => {
               {debt.toLocaleString('ru-RU')} ₽
             </p>
           </div>
+        </div>
+      </div>
+
+      {/* Виджеты */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <AdCampaignWidget clientId={user?.id} api={api} />
+        </div>
+        <div>
+          <RenewalCalendarWidget clientId={user?.id} api={api} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div>
+          <RecommendationsWidget clientId={user?.id} api={api} />
+        </div>
+        <div>
+          <SiteAvailabilityWidget clientId={user?.id} api={api} />
         </div>
       </div>
 

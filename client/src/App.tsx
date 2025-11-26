@@ -18,6 +18,7 @@ import NewTicket from './pages/admin/NewTicket';
 import NewInvoice from './pages/admin/NewInvoice';
 import ServicesList from './pages/admin/ServicesList';
 import AdminProfile from './pages/admin/AdminProfile';
+import ClientWidgetsManager from './pages/admin/ClientWidgetsManager';
 
 // Client pages
 import Dashboard from './pages/client/Dashboard';
@@ -72,6 +73,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <ClientDetail />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/clients/:id/widgets"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ClientWidgetsManager />
                 </ProtectedRoute>
               }
             />

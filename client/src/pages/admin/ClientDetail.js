@@ -413,6 +413,12 @@ const ClientDetail = () => {
               Редактировать
             </button>
             <button
+              onClick={() => navigate(`/admin/clients/${id}/widgets`)}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
+            >
+              Управлять виджетами
+            </button>
+            <button
               onClick={() => navigate(`/admin/tickets/new?clientId=${id}`)}
               className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm sm:text-base w-full sm:w-auto"
             >
