@@ -16,6 +16,8 @@ import TicketDetail from './pages/admin/TicketDetail';
 import TaskDetail from './pages/admin/TaskDetail';
 import NewTicket from './pages/admin/NewTicket';
 import NewInvoice from './pages/admin/NewInvoice';
+import ServicesList from './pages/admin/ServicesList';
+import AdminProfile from './pages/admin/AdminProfile';
 
 // Client pages
 import Dashboard from './pages/client/Dashboard';
@@ -110,6 +112,22 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['admin']}>
                   <NewInvoice />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/services"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <ServicesList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/admin/profile"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminProfile />
                 </ProtectedRoute>
               }
             />

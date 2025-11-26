@@ -9,8 +9,12 @@ const Dashboard = () => {
   const [client, setClient] = useState(null);
   const [tickets, setTickets] = useState([]);
   const [invoices, setInvoices] = useState([]);
+  const [services, setServices] = useState([]);
   const [debt, setDebt] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [selectedService, setSelectedService] = useState(null);
+  const [showServiceModal, setShowServiceModal] = useState(false);
+  const [showConfirmOrder, setShowConfirmOrder] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -21,20 +25,36 @@ const Dashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [clientRes, ticketsRes, invoicesRes, debtRes] = await Promise.all([
+      const [clientRes, ticketsRes, invoicesRes, debtRes, servicesRes] = await Promise.all([
         api.get(`/clients/${user.id}`),
         api.get(`/tickets/client/${user.id}`),
         api.get(`/invoices/client/${user.id}`),
         api.get(`/invoices/debt/${user.id}`),
+        api.get('/services'),
       ]);
       setClient(clientRes.data);
       setTickets(ticketsRes.data);
       setInvoices(invoicesRes.data);
       setDebt(debtRes.data.total_debt);
+      setServices(servicesRes.data);
     } catch (error) {
       console.error('Ошибка при загрузке данных:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleOrderService = async () => {
+    if (!selectedService) return;
+    try {
+      await api.post(`/services/${selectedService.id}/order`);
+      setShowConfirmOrder(false);
+      setShowServiceModal(false);
+      setSelectedService(null);
+      alert('Услуга успешно заказана! Для вас создан новый тикет.');
+      fetchData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Ошибка при заказе услуги');
     }
   };
 
@@ -133,6 +153,43 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {services.length > 0 && (
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-bold text-gray-800 mb-4">Доступные услуги</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {services.map((service) => (
+              <div
+                key={service.id}
+                className="border rounded-lg p-4 hover:shadow-lg transition-shadow"
+              >
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                  {service.name}
+                </h3>
+                {service.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                    {service.description}
+                  </p>
+                )}
+                <div className="flex items-end justify-between">
+                  <div className="text-2xl font-bold text-primary-600">
+                    {service.price.toLocaleString('ru-RU')} ₽
+                  </div>
+                  <button
+                    onClick={() => {
+                      setSelectedService(service);
+                      setShowServiceModal(true);
+                    }}
+                    className="bg-primary-600 text-white px-3 py-2 rounded hover:bg-primary-700 text-sm"
+                  >
+                    Подробнее
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -240,6 +297,79 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно для просмотра услуги */}
+      {showServiceModal && selectedService && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">
+              {selectedService.name}
+            </h2>
+            {selectedService.description && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-600 mb-2">Описание:</p>
+                <p className="text-gray-800">{selectedService.description}</p>
+              </div>
+            )}
+            <div className="bg-gray-50 rounded-lg p-4 mb-4">
+              <p className="text-sm text-gray-600 mb-1">Стоимость:</p>
+              <p className="text-3xl font-bold text-primary-600">
+                {selectedService.price.toLocaleString('ru-RU')} ₽
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowConfirmOrder(true)}
+                className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 font-medium"
+              >
+                Заказать
+              </button>
+              <button
+                onClick={() => {
+                  setShowServiceModal(false);
+                  setSelectedService(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно подтверждения заказа */}
+      {showConfirmOrder && selectedService && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Подтверждение заказа</h2>
+            <p className="text-gray-700 mb-4">
+              Вы уверены, что хотите заказать услугу "<strong>{selectedService.name}</strong>" стоимостью <strong>{selectedService.price.toLocaleString('ru-RU')} ₽</strong>?
+            </p>
+            <p className="text-sm text-gray-600 mb-6">
+              Для вас будет создан новый тикет с этой услугой.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleOrderService}
+                className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 font-medium"
+              >
+                Заказать
+              </button>
+              <button
+                onClick={() => {
+                  setShowConfirmOrder(false);
+                  setShowServiceModal(false);
+                  setSelectedService(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -5,16 +5,15 @@ let API_URL = process.env.REACT_APP_API_URL;
 
 // Если переменная окружения не установлена, определяем по текущему хосту
 if (!API_URL) {
-  const protocol = window.location.protocol;
-  const host = window.location.hostname;
-  const port = window.location.port;
+  const hostname = window.location.hostname;
   
-  // На production используем текущий хост
-  if (host.includes('obs-panel.ru') || host === '46.173.29.62') {
-    API_URL = `${protocol}//${host}${port ? ':' + port : ''}/api`;
-  } else {
-    // На локальной машине используем localhost:5001
+  // На локальной машине используем localhost:5001
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
     API_URL = 'http://localhost:5001/api';
+  } else {
+    // На production используем текущий хост
+    const protocol = window.location.protocol;
+    API_URL = `${protocol}//${hostname}/api`;
   }
 }
 

@@ -301,6 +301,30 @@ db.serialize(() => {
     FOREIGN KEY (user_id) REFERENCES users(id)
   )`);
 
+  // Услуги
+  db.run(`CREATE TABLE IF NOT EXISTS services (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    description TEXT,
+    price REAL NOT NULL,
+    created_by INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (created_by) REFERENCES users(id)
+  )`);
+
+  // Заказы услуг клиентами
+  db.run(`CREATE TABLE IF NOT EXISTS service_orders (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    client_id INTEGER NOT NULL,
+    service_id INTEGER NOT NULL,
+    ticket_id INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE,
+    FOREIGN KEY (service_id) REFERENCES services(id),
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id)
+  )`);
+
   // Создание тестового администратора (пароль: admin123)
   const adminPassword = bcrypt.hashSync('admin123', 10);
   db.run(`INSERT OR IGNORE INTO users (email, password, role, name) 
@@ -1352,6 +1376,275 @@ app.post('/api/clients/:id/generate-password', authenticateToken, requireRole('a
       }
     );
   });
+});
+
+// Роуты для услуг
+app.get('/api/services', authenticateToken, (req, res) => {
+  const userRole = req.user.role;
+  
+  // Клиенты и специалисты видят только опубликованные услуги
+  // Администраторы видят все
+  let query = 'SELECT * FROM services ORDER BY name ASC';
+  
+  db.all(query, [], (err, services) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при получении услуг' });
+    }
+    res.json(services);
+  });
+});
+
+app.get('/api/services/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+
+  db.get('SELECT * FROM services WHERE id = ?', [id], (err, service) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при получении услуги' });
+    }
+    if (!service) {
+      return res.status(404).json({ error: 'Услуга не найдена' });
+    }
+    res.json(service);
+  });
+});
+
+app.post('/api/services', authenticateToken, requireRole('admin'), (req, res) => {
+  const { name, description, price } = req.body;
+
+  if (!name || price === undefined || price === null) {
+    return res.status(400).json({ error: 'Необходимо указать name и price' });
+  }
+
+  db.run(
+    `INSERT INTO services (name, description, price, created_by)
+     VALUES (?, ?, ?, ?)`,
+    [name, description || null, parseFloat(price), req.user.id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при создании услуги' });
+      }
+      res.json({ id: this.lastID, name, description, price, created_by: req.user.id });
+    }
+  );
+});
+
+app.put('/api/services/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+  const { name, description, price } = req.body;
+
+  if (!name || price === undefined || price === null) {
+    return res.status(400).json({ error: 'Необходимо указать name и price' });
+  }
+
+  db.run(
+    `UPDATE services 
+     SET name = ?, description = ?, price = ?, updated_at = CURRENT_TIMESTAMP
+     WHERE id = ?`,
+    [name, description || null, parseFloat(price), id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при обновлении услуги' });
+      }
+      res.json({ message: 'Услуга обновлена' });
+    }
+  );
+});
+
+app.delete('/api/services/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+
+  db.run('DELETE FROM services WHERE id = ?', [id], function(err) {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при удалении услуги' });
+    }
+    if (this.changes === 0) {
+      return res.status(404).json({ error: 'Услуга не найдена' });
+    }
+    res.json({ message: 'Услуга удалена' });
+  });
+});
+
+// Роут для заказа услуги (создает тикет)
+app.post('/api/services/:id/order', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const userRole = req.user.role;
+
+  if (userRole !== 'client') {
+    return res.status(403).json({ error: 'Только клиенты могут заказывать услуги' });
+  }
+
+  const clientId = req.user.id;
+
+  // Получаем информацию об услуге
+  db.get('SELECT * FROM services WHERE id = ?', [id], (err, service) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка сервера' });
+    }
+    if (!service) {
+      return res.status(404).json({ error: 'Услуга не найдена' });
+    }
+
+    // Создаем тикет с темой "Заказана услуга"
+    db.run(
+      `INSERT INTO tickets (client_id, title, description, status)
+       VALUES (?, ?, ?, 'open')`,
+      [clientId, 'Заказана услуга', service.name],
+      function(ticketErr) {
+        if (ticketErr) {
+          return res.status(500).json({ error: 'Ошибка при создании тикета' });
+        }
+
+        const ticketId = this.lastID;
+
+        // Записываем заказ услуги
+        db.run(
+          `INSERT INTO service_orders (client_id, service_id, ticket_id)
+           VALUES (?, ?, ?)`,
+          [clientId, id, ticketId],
+          function(orderErr) {
+            if (orderErr) {
+              return res.status(500).json({ error: 'Ошибка при создании заказа' });
+            }
+
+            res.json({
+              id: this.lastID,
+              service_id: id,
+              ticket_id: ticketId,
+              message: 'Услуга успешно заказана'
+            });
+          }
+        );
+      }
+    );
+  });
+});
+
+// Роут для смены пароля администратора
+app.put('/api/auth/change-password', authenticateToken, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  const userId = req.user.id;
+  const userRole = req.user.role;
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'Необходимо указать текущий и новый пароль' });
+  }
+
+  db.get('SELECT * FROM users WHERE id = ?', [userId], async (err, user) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка сервера' });
+    }
+
+    if (!user) {
+      return res.status(404).json({ error: 'Пользователь не найден' });
+    }
+
+    // Проверяем текущий пароль
+    const validPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Текущий пароль неверный' });
+    }
+
+    // Хешируем новый пароль
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    db.run(
+      'UPDATE users SET password = ? WHERE id = ?',
+      [hashedPassword, userId],
+      function(updateErr) {
+        if (updateErr) {
+          return res.status(500).json({ error: 'Ошибка при изменении пароля' });
+        }
+
+        res.json({ message: 'Пароль успешно изменен' });
+      }
+    );
+  });
+});
+
+// Роут для создания нового пользователя (только администратор)
+app.post('/api/auth/create-user', authenticateToken, requireRole('admin'), async (req, res) => {
+  const { email, password, role, name } = req.body;
+
+  if (!email || !password || !role || !name) {
+    return res.status(400).json({ error: 'Необходимо указать email, password, role и name' });
+  }
+
+  if (!['admin', 'specialist'].includes(role)) {
+    return res.status(400).json({ error: 'Role должна быть admin или specialist' });
+  }
+
+  // Проверяем, не существует ли уже пользователь с этим email
+  db.get('SELECT * FROM users WHERE email = ?', [email], async (err, existingUser) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка сервера' });
+    }
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Пользователь с этим email уже существует' });
+    }
+
+    // Хешируем пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    db.run(
+      `INSERT INTO users (email, password, role, name)
+       VALUES (?, ?, ?, ?)`,
+      [email, hashedPassword, role, name],
+      function(insertErr) {
+        if (insertErr) {
+          return res.status(500).json({ error: 'Ошибка при создании пользователя' });
+        }
+
+        res.json({
+          id: this.lastID,
+          email,
+          role,
+          name,
+          message: 'Пользователь успешно создан'
+        });
+      }
+    );
+  });
+});
+
+// Получить список всех пользователей (кроме текущего пользователя)
+app.get('/api/auth/users', authenticateToken, requireRole('admin'), (req, res) => {
+  db.all(
+    'SELECT id, email, name, role, created_at FROM users WHERE id != ? ORDER BY created_at DESC',
+    [req.user.id],
+    (err, users) => {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка сервера' });
+      }
+      res.json(users);
+    }
+  );
+});
+
+// Удалить пользователя
+app.delete('/api/auth/users/:userId', authenticateToken, requireRole('admin'), (req, res) => {
+  const { userId } = req.params;
+
+  // Не позволяем удалить текущего пользователя
+  if (parseInt(userId) === req.user.id) {
+    return res.status(400).json({ error: 'Вы не можете удалить свою учетную запись' });
+  }
+
+  db.run(
+    'DELETE FROM users WHERE id = ?',
+    [userId],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка при удалении пользователя' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Пользователь не найден' });
+      }
+
+      res.json({ message: 'Пользователь успешно удален' });
+    }
+  );
 });
 
 app.listen(PORT, () => {

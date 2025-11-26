@@ -403,16 +403,11 @@ const ClientDetail = () => {
               + Создать счет
             </button>
             <button
-              onClick={handleOpenGenerateInvoice}
-              className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 text-sm sm:text-base w-full sm:w-auto"
-            >
-              Сгенерировать счет (QR)
-            </button>
-            <button
               onClick={() => setShowConfirmDeleteClient(true)}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm sm:text-base w-full sm:w-auto"
+              className="text-red-600 hover:text-red-700 transition-colors text-lg"
+              title="Удалить клиента"
             >
-              Удалить клиента
+              🗑️
             </button>
           </div>
         )}
@@ -834,6 +829,16 @@ const ClientDetail = () => {
               Счета ({invoices.length})
             </button>
             <button
+              onClick={() => setActiveTab('generate_invoice')}
+              className={`px-6 py-3 font-medium ${
+                activeTab === 'generate_invoice'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Генерировать счет (QR)
+            </button>
+            <button
               onClick={() => setActiveTab('tasks')}
               className={`px-6 py-3 font-medium ${
                 activeTab === 'tasks'
@@ -967,6 +972,73 @@ const ClientDetail = () => {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'generate_invoice' && (
+            <div className="max-w-md">
+              <form onSubmit={handleGenerateInvoicePreview} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Сумма (₽) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={generateInvoiceData.amount}
+                    onChange={(e) => setGenerateInvoiceData({ ...generateInvoiceData, amount: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Наименование услуги <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={generateInvoiceData.serviceName}
+                    onChange={(e) => setGenerateInvoiceData({ ...generateInvoiceData, serviceName: e.target.value })}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    placeholder="Например: Поддержка сайта — декабрь 2025"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={isGeneratingPreview}
+                  className="w-full bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 disabled:bg-gray-400"
+                >
+                  {isGeneratingPreview ? 'Генерируется...' : 'Просмотреть счет'}
+                </button>
+              </form>
+
+              {previewPdfBase64 && (
+                <div className="mt-4 space-y-4">
+                  <div className="h-96 border rounded-lg overflow-hidden">
+                    <iframe
+                      title="Invoice preview"
+                      src={`data:application/pdf;base64,${previewPdfBase64}`}
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleSaveGeneratedInvoice}
+                      className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                    >
+                      Сохранить счет
+                    </button>
+                    <button
+                      onClick={() => setPreviewPdfBase64(null)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Вернуться
+                    </button>
+                  </div>
+                </div>
               )}
             </div>
           )}
@@ -1107,64 +1179,6 @@ const ClientDetail = () => {
                 </button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-      {/* Модальное окно для генерации счета с QR (предпросмотр и сохранение) */}
-      {showGenerateInvoiceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-lg w-full mx-4">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">Генерация счета с QR</h2>
-            {!previewPdfBase64 ? (
-              <form onSubmit={handleGenerateInvoicePreview}>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Сумма (₽) <span className="text-red-500">*</span></label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={generateInvoiceData.amount}
-                    onChange={(e) => setGenerateInvoiceData({ ...generateInvoiceData, amount: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  />
-                </div>
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Наименование услуги <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={generateInvoiceData.serviceName}
-                    onChange={(e) => setGenerateInvoiceData({ ...generateInvoiceData, serviceName: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    placeholder="Например: Поддержка сайта — декабрь 2025"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button type="submit" className="flex-1 bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700">
-                    {isGeneratingPreview ? 'Генерируется...' : 'Просмотреть счет'}
-                  </button>
-                  <button type="button" onClick={() => setShowGenerateInvoiceModal(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700">
-                    Отмена
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-4">
-                <div className="h-96">
-                  <iframe
-                    title="Invoice preview"
-                    src={`data:application/pdf;base64,${previewPdfBase64}`}
-                    className="w-full h-full border rounded"
-                  />
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={handleSaveGeneratedInvoice} className="flex-1 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">Сохранить счет</button>
-                  <button onClick={() => { setPreviewPdfBase64(null); }} className="px-4 py-2 border border-gray-300 rounded-lg">Вернуться</button>
-                  <button onClick={() => { setShowGenerateInvoiceModal(false); setPreviewPdfBase64(null); }} className="px-4 py-2 border border-gray-300 rounded-lg">Закрыть</button>
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}

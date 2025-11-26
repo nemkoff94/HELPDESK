@@ -20,6 +20,8 @@ const Layout = ({ children }) => {
       case 'admin':
         return [
           { path: '/admin/clients', label: 'Клиенты' },
+          { path: '/admin/services', label: 'Услуги' },
+          { path: '/admin/profile', label: 'Профиль' },
         ];
       case 'specialist':
         return [
