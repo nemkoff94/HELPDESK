@@ -2316,4 +2316,47 @@ app.listen(PORT, () => {
   console.log('Крон-задача снятия скриншотов активирована');
 });
 
+// Админ-эндпоинт: инициализировать виджеты для всех клиентов, у которых их нет
+app.post('/api/widgets/init', authenticateToken, requireRole('admin'), (req, res) => {
+  db.all('SELECT id, url FROM clients', [], (err, clients) => {
+    if (err) return res.status(500).json({ error: 'Ошибка при чтении клиентов' });
+
+    clients.forEach(client => {
+      const clientId = client.id;
+
+      // ad_campaign
+      db.get('SELECT id FROM ad_campaign_widgets WHERE client_id = ?', [clientId], (err, row) => {
+        if (!row) {
+          db.run(`INSERT INTO ad_campaign_widgets (client_id, enabled, monthly_budget, recommended_budget, status) VALUES (?, 1, 0, 0, 'active')`, [clientId]);
+        }
+      });
+
+      // renewal_calendar
+      db.get('SELECT id FROM renewal_calendar_widgets WHERE client_id = ?', [clientId], (err, row) => {
+        if (!row) {
+          db.run(`INSERT INTO renewal_calendar_widgets (client_id, enabled, domain_renewal_date, hosting_renewal_date, ssl_renewal_date, ssl_auto_renewal) VALUES (?, 1, NULL, NULL, NULL, 0)`, [clientId]);
+        }
+      });
+
+      // recommendations
+      db.get('SELECT id FROM recommendations_widgets WHERE client_id = ?', [clientId], (err, row) => {
+        if (!row) {
+          db.run(`INSERT INTO recommendations_widgets (client_id, enabled) VALUES (?, 1)`, [clientId], function(err) {
+            if (err) console.error('Ошибка при создании recommendations_widgets:', err);
+          });
+        }
+      });
+
+      // site_availability
+      db.get('SELECT id FROM site_availability_widgets WHERE client_id = ?', [clientId], (err, row) => {
+        if (!row) {
+          db.run(`INSERT INTO site_availability_widgets (client_id, enabled, site_url, last_check, status) VALUES (?, 1, ?, CURRENT_TIMESTAMP, 'unknown')`, [clientId, client.url || null]);
+        }
+      });
+    });
+
+    res.json({ message: 'Инициализация виджетов запущена' });
+  });
+});
+
 
