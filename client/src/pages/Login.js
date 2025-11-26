@@ -5,9 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [clientId, setClientId] = useState('');
   const [loginType, setLoginType] = useState('user'); // 'user' or 'client'
-  const [clientLoginMethod, setClientLoginMethod] = useState('email'); // 'email' or 'id'
+  // loginType determines which tab is active; tabs order swapped below
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, clientLogin } = useAuth();
@@ -22,11 +21,8 @@ const Login = () => {
     if (loginType === 'user') {
       result = await login(email, password);
     } else {
-      if (clientLoginMethod === 'email') {
-        result = await clientLogin(email, password);
-      } else {
-        result = await clientLogin(null, null, parseInt(clientId));
-      }
+      // Клиент входит только по email + паролю
+      result = await clientLogin(email, password);
     }
 
     setLoading(false);
@@ -49,17 +45,6 @@ const Login = () => {
         <div className="flex mb-6 bg-gray-100 rounded-lg p-1">
           <button
             type="button"
-            onClick={() => setLoginType('user')}
-            className={`flex-1 py-2 px-4 rounded-md text-xs sm:text-sm font-medium transition-colors ${
-              loginType === 'user'
-                ? 'bg-white text-primary-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            Сотрудник
-          </button>
-          <button
-            type="button"
             onClick={() => setLoginType('client')}
             className={`flex-1 py-2 px-4 rounded-md text-xs sm:text-sm font-medium transition-colors ${
               loginType === 'client'
@@ -68,6 +53,17 @@ const Login = () => {
             }`}
           >
             Клиент
+          </button>
+          <button
+            type="button"
+            onClick={() => setLoginType('user')}
+            className={`flex-1 py-2 px-4 rounded-md text-xs sm:text-sm font-medium transition-colors ${
+              loginType === 'user'
+                ? 'bg-white text-primary-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            Сотрудник
           </button>
         </div>
 
@@ -103,74 +99,32 @@ const Login = () => {
             </>
           ) : (
             <>
-              <div className="flex gap-2 mb-4">
-                <button
-                  type="button"
-                  onClick={() => setClientLoginMethod('email')}
-                  className={`flex-1 py-2 px-3 rounded text-xs sm:text-sm font-medium ${
-                    clientLoginMethod === 'email'
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  Email и пароль
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setClientLoginMethod('id')}
-                  className={`flex-1 py-2 px-3 rounded text-xs sm:text-sm font-medium ${
-                    clientLoginMethod === 'id'
-                      ? 'bg-primary-100 text-primary-700'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  По ID
-                </button>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
+                  placeholder="client@example.com"
+                />
               </div>
-              {clientLoginMethod === 'email' ? (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Email
-                    </label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
-                      placeholder="client@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Пароль
-                    </label>
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
-                      placeholder="••••••••"
-                    />
-                  </div>
-                </>
-              ) : (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ID клиента
-                  </label>
-                  <input
-                    type="number"
-                    value={clientId}
-                    onChange={(e) => setClientId(e.target.value)}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
-                    placeholder="1"
-                  />
-                </div>
-              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Пароль
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent text-base"
+                  placeholder="••••••••"
+                />
+              </div>
             </>
           )}
 
