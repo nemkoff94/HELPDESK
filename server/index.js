@@ -773,6 +773,39 @@ app.put('/api/tickets/:id', authenticateToken, requireRole('admin', 'specialist'
   );
 });
 
+// Удалить тикет (полное удаление с комментариями и связанными заказами услуг)
+app.delete('/api/tickets/:id', authenticateToken, requireRole('admin'), (req, res) => {
+  const { id } = req.params;
+
+  db.get('SELECT * FROM tickets WHERE id = ?', [id], (err, ticket) => {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (!ticket) return res.status(404).json({ error: 'Тикет не найден' });
+
+    // Удаляем комментарии к тикету
+    db.run('DELETE FROM ticket_comments WHERE ticket_id = ?', [id], (err) => {
+      if (err) console.error('Error deleting ticket comments:', err);
+
+      // Удаляем связи в service_orders, где ticket_id ссылается на этот тикет
+      db.run('DELETE FROM service_orders WHERE ticket_id = ?', [id], (err) => {
+        if (err) console.error('Error deleting service_orders:', err);
+
+        // Наконец удаляем сам тикет
+        db.run('DELETE FROM tickets WHERE id = ?', [id], function(err) {
+          if (err) {
+            return res.status(500).json({ error: 'Ошибка при удалении тикета' });
+          }
+
+          if (this.changes === 0) {
+            return res.status(404).json({ error: 'Тикет не найден' });
+          }
+
+          res.json({ message: 'Тикет удален' });
+        });
+      });
+    });
+  });
+});
+
 // Роуты для комментариев
 app.get('/api/tickets/:id/comments', authenticateToken, (req, res) => {
   const { id } = req.params;

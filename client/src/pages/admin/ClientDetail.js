@@ -45,6 +45,8 @@ const ClientDetail = () => {
   const [showConfirmDeleteInvoice, setShowConfirmDeleteInvoice] = useState(false);
   const [invoiceToDelete, setInvoiceToDelete] = useState(null);
   const [showConfirmDeleteClient, setShowConfirmDeleteClient] = useState(false);
+  const [ticketToDelete, setTicketToDelete] = useState(null);
+  const [showConfirmDeleteTicket, setShowConfirmDeleteTicket] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -238,6 +240,26 @@ const ClientDetail = () => {
       setShowConfirmDeleteInvoice(false);
       setInvoiceToDelete(null);
       alert(error.response?.data?.error || 'Ошибка при удалении счета');
+    }
+  };
+
+  const requestDeleteTicket = (ticket) => {
+    setTicketToDelete(ticket);
+    setShowConfirmDeleteTicket(true);
+  };
+
+  const confirmDeleteTicket = async () => {
+    if (!ticketToDelete) return;
+    try {
+      await api.delete(`/tickets/${ticketToDelete.id}`);
+      setShowConfirmDeleteTicket(false);
+      setTicketToDelete(null);
+      fetchData();
+      alert('Тикет удалён');
+    } catch (error) {
+      setShowConfirmDeleteTicket(false);
+      setTicketToDelete(null);
+      alert(error.response?.data?.error || 'Ошибка при удалении тикета');
     }
   };
 
@@ -488,6 +510,19 @@ const ClientDetail = () => {
               cancelText="Отмена"
               onConfirm={handleDeleteClient}
               onCancel={() => setShowConfirmDeleteClient(false)}
+              isDangerous={true}
+            />
+          )}
+          {/* Confirm ticket deletion modal */}
+          {showConfirmDeleteTicket && ticketToDelete && (
+            <ConfirmModal
+              open={showConfirmDeleteTicket}
+              title="Удалить тикет"
+              message={`Вы уверены, что хотите удалить тикет "${ticketToDelete.title}"? Это действие нельзя отменить.`}
+              confirmText="Удалить"
+              cancelText="Отмена"
+              onConfirm={confirmDeleteTicket}
+              onCancel={() => { setShowConfirmDeleteTicket(false); setTicketToDelete(null); }}
               isDangerous={true}
             />
           )}
@@ -877,13 +912,27 @@ const ClientDetail = () => {
                           {new Date(ticket.created_at).toLocaleString('ru-RU')}
                         </p>
                       </div>
-                      <span
-                        className={`ml-4 px-2 py-1 rounded text-xs font-medium ${getTicketStatusColor(
-                          ticket.status
-                        )}`}
-                      >
-                        {getTicketStatusText(ticket.status)}
-                      </span>
+                      <div className="flex items-start gap-2">
+                        <span
+                          className={`ml-4 px-2 py-1 rounded text-xs font-medium ${getTicketStatusColor(
+                            ticket.status
+                          )}`}
+                        >
+                          {getTicketStatusText(ticket.status)}
+                        </span>
+                        {user?.role === 'admin' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              requestDeleteTicket(ticket);
+                            }}
+                            className="text-red-600 hover:text-red-800 font-medium text-sm"
+                            title="Удалить тикет"
+                          >
+                            Удалить
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
