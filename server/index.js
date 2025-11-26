@@ -2311,9 +2311,17 @@ const screenshotCron = cron.schedule('0 4 * * *', async () => {
   );
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Сервер запущен на порту ${PORT}`);
   console.log('Крон-задача снятия скриншотов активирована');
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+  // If port is in use, log and exit so a process manager can restart correctly
+  if (err && err.code === 'EADDRINUSE') {
+    console.error(`Порт ${PORT} уже занят. Проверьте запущенные процессы.`);
+  }
 });
 
 // Админ-эндпоинт: инициализировать виджеты для всех клиентов, у которых их нет
@@ -2350,7 +2358,7 @@ app.post('/api/widgets/init', authenticateToken, requireRole('admin'), (req, res
       // site_availability
       db.get('SELECT id FROM site_availability_widgets WHERE client_id = ?', [clientId], (err, row) => {
         if (!row) {
-          db.run(`INSERT INTO site_availability_widgets (client_id, enabled, site_url, last_check, status) VALUES (?, 1, ?, CURRENT_TIMESTAMP, 'unknown')`, [clientId, client.url || null]);
+          db.run(`INSERT INTO site_availability_widgets (client_id, enabled, site_url, last_check_time, last_check_status) VALUES (?, 1, ?, CURRENT_TIMESTAMP, 'unknown')`, [clientId, client.url || null]);
         }
       });
     });
