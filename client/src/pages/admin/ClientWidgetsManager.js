@@ -46,6 +46,13 @@ const ClientWidgetsManager = () => {
     site_url: '',
   });
 
+  // Состояния для кастомных обновлений в календаре
+  const [newCustomUpdate, setNewCustomUpdate] = useState({
+    title: '',
+    date: '',
+  });
+  const [isAddingCustomUpdate, setIsAddingCustomUpdate] = useState(false);
+
   useEffect(() => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -178,6 +185,29 @@ const ClientWidgetsManager = () => {
       fetchData();
     } catch (error) {
       alert(error.response?.data?.error || 'Ошибка при сохранении');
+    }
+  };
+
+  const handleAddCustomUpdate = async (e) => {
+    e.preventDefault();
+    if (!newCustomUpdate.title || !newCustomUpdate.date) {
+      alert('Необходимо заполнить все поля');
+      return;
+    }
+
+    try {
+      setIsAddingCustomUpdate(true);
+      await api.post(`/widgets/renewal-calendar/${id}/custom-update`, {
+        title: newCustomUpdate.title,
+        date: newCustomUpdate.date,
+      });
+      alert('Кастомное обновление добавлено');
+      setNewCustomUpdate({ title: '', date: '' });
+      fetchData();
+    } catch (error) {
+      alert(error.response?.data?.error || 'Ошибка при добавлении кастомного обновления');
+    } finally {
+      setIsAddingCustomUpdate(false);
     }
   };
 
@@ -320,81 +350,166 @@ const ClientWidgetsManager = () => {
 
           {/* Виджет календаря обновлений */}
           {activeTab === 'renewal-calendar' && (
-            <form onSubmit={handleSaveRenewalCalendar} className="max-w-2xl space-y-4">
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={renewalCalendarForm.enabled}
-                    onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, enabled: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <span className="font-medium text-gray-700">Включить виджет</span>
-                </label>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Дата продления домена
-                </label>
-                <input
-                  type="date"
-                  value={renewalCalendarForm.domain_renewal_date}
-                  onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, domain_renewal_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Дата продления хостинга
-                </label>
-                <input
-                  type="date"
-                  value={renewalCalendarForm.hosting_renewal_date}
-                  onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, hosting_renewal_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Продление SSL
-                  </label>
+            <div className="max-w-2xl space-y-6">
+              <form onSubmit={handleSaveRenewalCalendar} className="space-y-4">
+                <div className="flex items-center gap-4">
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={renewalCalendarForm.ssl_auto_renewal}
-                      onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, ssl_auto_renewal: e.target.checked })}
+                      checked={renewalCalendarForm.enabled}
+                      onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, enabled: e.target.checked })}
                       className="w-4 h-4"
                     />
-                    <span className="text-sm text-gray-700">Обновляется автоматически</span>
+                    <span className="font-medium text-gray-700">Включить виджет</span>
                   </label>
                 </div>
 
-                {!renewalCalendarForm.ssl_auto_renewal && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Дата продления домена
+                  </label>
+                  <input
+                    type="date"
+                    value={renewalCalendarForm.domain_renewal_date}
+                    onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, domain_renewal_date: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Дата продления хостинга
+                  </label>
+                  <input
+                    type="date"
+                    value={renewalCalendarForm.hosting_renewal_date}
+                    onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, hosting_renewal_date: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div className="space-y-3">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Дата продления SSL (если не автоматическое)
+                      Продление SSL
                     </label>
-                    <input
-                      type="date"
-                      value={renewalCalendarForm.ssl_renewal_date}
-                      onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, ssl_renewal_date: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                    />
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={renewalCalendarForm.ssl_auto_renewal}
+                        onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, ssl_auto_renewal: e.target.checked })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm text-gray-700">Обновляется автоматически</span>
+                    </label>
                   </div>
-                )}
-              </div>
 
-              <button
-                type="submit"
-                className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 font-medium"
-              >
-                Сохранить
-              </button>
-            </form>
+                  {!renewalCalendarForm.ssl_auto_renewal && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Дата продления SSL (если не автоматическое)
+                      </label>
+                      <input
+                        type="date"
+                        value={renewalCalendarForm.ssl_renewal_date}
+                        onChange={(e) => setRenewalCalendarForm({ ...renewalCalendarForm, ssl_renewal_date: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700 font-medium"
+                >
+                  Сохранить
+                </button>
+              </form>
+
+              {renewalCalendarForm.enabled && (
+                <div className="border-t pt-6">
+                  <h3 className="text-lg font-semibold text-gray-800 mb-4">Кастомные обновления</h3>
+                  
+                  <form onSubmit={handleAddCustomUpdate} className="space-y-4 bg-gray-50 p-4 rounded-lg mb-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Название обновления <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={newCustomUpdate.title}
+                        onChange={(e) => setNewCustomUpdate({ ...newCustomUpdate, title: e.target.value })}
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                        placeholder="Например: Обновить CMS, Подключить новый сервис"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Дата <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={newCustomUpdate.date}
+                        onChange={(e) => setNewCustomUpdate({ ...newCustomUpdate, date: e.target.value })}
+                        required
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                      />
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={isAddingCustomUpdate}
+                      className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 font-medium disabled:opacity-60"
+                    >
+                      {isAddingCustomUpdate ? 'Добавление...' : 'Добавить обновление'}
+                    </button>
+                  </form>
+
+                  <div>
+                    <h4 className="font-semibold text-gray-800 mb-3">Текущие кастомные обновления</h4>
+                    {renewalCalendar?.custom_updates && renewalCalendar.custom_updates.length > 0 ? (
+                      <div className="space-y-2">
+                        {renewalCalendar.custom_updates.map((update) => {
+                          const date = new Date(update.date);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const targetDate = new Date(update.date);
+                          targetDate.setHours(0, 0, 0, 0);
+                          const daysUntil = Math.ceil((targetDate - today) / (1000 * 60 * 60 * 24));
+                          
+                          let statusColor = 'text-gray-600 bg-gray-50';
+                          let statusText = `${daysUntil} дн.`;
+                          
+                          if (daysUntil < 0) {
+                            statusColor = 'text-red-700 bg-red-50 font-semibold';
+                            statusText = 'Просрочено';
+                          } else if (daysUntil < 60) {
+                            statusColor = 'text-yellow-700 bg-yellow-50 font-semibold';
+                          }
+
+                          return (
+                            <div key={update.id} className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center">
+                              <div>
+                                <p className="font-medium text-gray-800">{update.title}</p>
+                                <p className="text-sm text-gray-600 mt-1">{date.toLocaleDateString('ru-RU')}</p>
+                              </div>
+                              <span className={`text-sm px-3 py-1 rounded ${statusColor}`}>
+                                {statusText}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-500 text-sm">Кастомных обновлений нет</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Виджет рекомендаций */}
