@@ -129,6 +129,7 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
+      {/* Главный модуль - неизменный */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h1 className="text-2xl font-bold text-gray-800 mb-4">
           {client?.project_name}
@@ -159,168 +160,172 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Виджеты */}
-      <TelegramNotificationsWidget />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <AdCampaignWidget clientId={user?.id} api={api} />
-        </div>
-        <div>
-          <RenewalCalendarWidget clientId={user?.id} api={api} />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <RecommendationsWidget clientId={user?.id} api={api} />
-        </div>
-        <div>
-          <SiteAvailabilityWidget clientId={user?.id} api={api} />
-        </div>
-      </div>
-
-      {services.length > 0 && (
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Доступные услуги</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {services.map((service) => (
-              <div
-                key={service.id}
-                className="border rounded-lg p-4 hover:shadow-lg transition-shadow"
+      {/* Двухколончная структура виджетов */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Левая колонка (2/3 ширины) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Тикеты */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Тикеты</h2>
+              <button
+                onClick={() => navigate('/client/tickets/new')}
+                className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm"
               >
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">
-                  {service.name}
-                </h3>
-                {service.description && (
-                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                    {service.description}
-                  </p>
-                )}
-                <div className="flex items-end justify-between">
-                  <div className="text-2xl font-bold text-primary-600">
-                    {service.price.toLocaleString('ru-RU')} ₽
-                  </div>
-                  <button
-                    onClick={() => {
-                      setSelectedService(service);
-                      setShowServiceModal(true);
-                    }}
-                    className="bg-primary-600 text-white px-3 py-2 rounded hover:bg-primary-700 text-sm"
+                + Новый тикет
+              </button>
+            </div>
+            <div className="space-y-3">
+              {tickets.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Тикетов пока нет</p>
+              ) : (
+                tickets.slice(0, 5).map((ticket) => (
+                  <div
+                    key={ticket.id}
+                    onClick={() => navigate(`/client/tickets/${ticket.id}`)}
+                    className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    Подробнее
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold text-gray-800">Тикеты</h2>
-            <button
-              onClick={() => navigate('/client/tickets/new')}
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm"
-            >
-              + Новый тикет
-            </button>
-          </div>
-          <div className="space-y-3">
-            {tickets.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Тикетов пока нет</p>
-            ) : (
-              tickets.slice(0, 5).map((ticket) => (
-                <div
-                  key={ticket.id}
-                  onClick={() => navigate(`/client/tickets/${ticket.id}`)}
-                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-gray-800 mb-1">
+                          {ticket.title}
+                        </h3>
+                        <p className="text-sm text-gray-600 line-clamp-2">
+                          {ticket.description}
+                        </p>
+                      </div>
+                      <span
+                        className={`ml-4 px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getTicketStatusColor(
+                          ticket.status
+                        )}`}
+                      >
+                        {getTicketStatusText(ticket.status)}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              )}
+              {tickets.length > 5 && (
+                <button
+                  onClick={() => navigate('/client/tickets/all')}
+                  className="w-full text-primary-600 hover:text-primary-700 text-sm font-medium"
                 >
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-gray-800 mb-1">
-                        {ticket.title}
-                      </h3>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {ticket.description}
+                  Показать все тикеты →
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Счета */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Счета</h2>
+            <div className="space-y-3">
+              {invoices.length === 0 ? (
+                <p className="text-gray-500 text-center py-4">Счетов пока нет</p>
+              ) : (
+                invoices.slice(0, 5).map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="border rounded-lg p-4 flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-semibold">
+                        {new Date(invoice.date).toLocaleDateString('ru-RU')}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {invoice.amount.toLocaleString('ru-RU')} ₽
                       </p>
                     </div>
-                    <span
-                      className={`ml-4 px-2 py-1 rounded text-xs font-medium ${getTicketStatusColor(
-                        ticket.status
-                      )}`}
-                    >
-                      {getTicketStatusText(ticket.status)}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span
+                        className={`px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${
+                          invoice.status === 'paid'
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                        }`}
+                      >
+                        {invoice.status === 'paid' ? 'Оплачен' : 'Не оплачен'}
+                      </span>
+                      {invoice.file_path && (
+                        <a
+                          href={`http://localhost:5001${invoice.file_path}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary-600 hover:text-primary-700 text-sm"
+                        >
+                          Скачать
+                        </a>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))
-            )}
-            {tickets.length > 5 && (
-              <button
-                onClick={() => navigate('/client/tickets/all')}
-                className="w-full text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
-                Показать все тикеты →
-              </button>
-            )}
+                ))
+              )}
+              {invoices.length > 5 && (
+                <button
+                  onClick={() => navigate('/client/invoices/all')}
+                  className="w-full text-primary-600 hover:text-primary-700 text-sm font-medium"
+                >
+                  Показать все счета →
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Рекомендации */}
+          <RecommendationsWidget clientId={user?.id} api={api} />
+
+          {/* Доступные услуги */}
+          {services.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-4">Доступные услуги</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {services.map((service) => (
+                  <div
+                    key={service.id}
+                    className="border rounded-lg p-4 hover:shadow-lg transition-shadow"
+                  >
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">
+                      {service.name}
+                    </h3>
+                    {service.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+                        {service.description}
+                      </p>
+                    )}
+                    <div className="flex items-end justify-between">
+                      <div className="text-2xl font-bold text-primary-600">
+                        {service.price.toLocaleString('ru-RU')} ₽
+                      </div>
+                      <button
+                        onClick={() => {
+                          setSelectedService(service);
+                          setShowServiceModal(true);
+                        }}
+                        className="bg-primary-600 text-white px-3 py-2 rounded hover:bg-primary-700 text-sm"
+                      >
+                        Подробнее
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold text-gray-800 mb-4">Счета</h2>
-          <div className="space-y-3">
-            {invoices.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">Счетов пока нет</p>
-            ) : (
-              invoices.slice(0, 5).map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="border rounded-lg p-4 flex justify-between items-center"
-                >
-                  <div>
-                    <p className="font-semibold">
-                      {new Date(invoice.date).toLocaleDateString('ru-RU')}
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {invoice.amount.toLocaleString('ru-RU')} ₽
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        invoice.status === 'paid'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-red-100 text-red-800'
-                      }`}
-                    >
-                      {invoice.status === 'paid' ? 'Оплачен' : 'Не оплачен'}
-                    </span>
-                    {invoice.file_path && (
-                      <a
-                        href={`http://localhost:5001${invoice.file_path}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700 text-sm"
-                      >
-                        Скачать
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))
-            )}
-            {invoices.length > 5 && (
-              <button
-                onClick={() => navigate('/client/invoices/all')}
-                className="w-full text-primary-600 hover:text-primary-700 text-sm font-medium"
-              >
-                Показать все счета →
-              </button>
-            )}
-          </div>
+        {/* Правая колонка (1/3 ширины) */}
+        <div className="lg:col-span-1 space-y-6">
+          {/* Телеграмм уведомления */}
+          <TelegramNotificationsWidget />
+
+          {/* Доступность сайта */}
+          <SiteAvailabilityWidget clientId={user?.id} api={api} />
+
+          {/* Статус рекламных кампаний */}
+          <AdCampaignWidget clientId={user?.id} api={api} />
+
+          {/* Календарь обязательных обновлений */}
+          <RenewalCalendarWidget clientId={user?.id} api={api} />
         </div>
       </div>
 
