@@ -35,7 +35,7 @@ const notifyClientTicketStatusChange = async (db, clientId, ticketId, ticketTitl
  * Форматирует и отправляет уведомление о новом счете клиенту
  */
 const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => {
-  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${amount.toLocaleString('ru-RU')} ₽\n<b>Дата:</b> ${new Date(date).toLocaleDateString('ru-RU')}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать счет в вашей панели https://obs-panel.ru`;
+  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${amount.toLocaleString('ru-RU')} ₽\n<b>Дата:</b> ${new Date(date).toLocaleDateString('ru-RU')}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать по ссылке https://obs-panel.ru`;
   return await sendClientNotification(db, clientId, message);
 };
 
