@@ -205,6 +205,46 @@ const initializeDatabase = (db) => {
       FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
     )`);
 
+    // Telegram интеграция для клиентов
+    db.run(`CREATE TABLE IF NOT EXISTS client_telegram (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id INTEGER NOT NULL UNIQUE,
+      telegram_user_id INTEGER,
+      telegram_username TEXT,
+      connection_token TEXT UNIQUE NOT NULL,
+      enabled BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    )`);
+
+    // Telegram интеграция для администраторов
+    db.run(`CREATE TABLE IF NOT EXISTS user_telegram (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL UNIQUE,
+      telegram_user_id INTEGER,
+      telegram_username TEXT,
+      connection_token TEXT UNIQUE NOT NULL,
+      enabled BOOLEAN DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+
+    // Очередь уведомлений для Telegram
+    db.run(`CREATE TABLE IF NOT EXISTS telegram_notifications_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipient_type TEXT NOT NULL CHECK(recipient_type IN ('client', 'user')),
+      recipient_id INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      notification_type TEXT NOT NULL,
+      reference_id INTEGER,
+      sent BOOLEAN DEFAULT 0,
+      sent_at DATETIME,
+      error TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // Создание тестового администратора (пароль: admin123)
     const adminPassword = bcrypt.hashSync('admin123', 10);
     db.run(`INSERT OR IGNORE INTO users (email, password, role, name) 

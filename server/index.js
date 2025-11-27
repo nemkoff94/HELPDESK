@@ -6,6 +6,7 @@ require('dotenv').config();
 // Import modules
 const { initializeDatabase } = require('./database');
 const { initializeCronJobs } = require('./cron');
+const { initializeTelegramBot } = require('./lib/telegramBot');
 
 // Import routes
 const { router: authRouter } = require('./routes/auth');
@@ -15,6 +16,7 @@ const invoicesRouter = require('./routes/invoices');
 const tasksRouter = require('./routes/tasks');
 const servicesRouter = require('./routes/services');
 const { router: widgetsRouter } = require('./routes/widgets');
+const telegramRouter = require('./routes/telegram');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -52,6 +54,14 @@ app.use('/uploads', express.static('uploads'));
 const db = new sqlite3.Database('helpdesk.db');
 initializeDatabase(db);
 
+// Telegram Bot Initialization
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+if (TELEGRAM_BOT_TOKEN) {
+  initializeTelegramBot(TELEGRAM_BOT_TOKEN, db);
+} else {
+  console.warn('⚠️  TELEGRAM_BOT_TOKEN не найден. Telegram интеграция отключена.');
+}
+
 // Middleware to attach db to requests
 app.use((req, res, next) => {
   req.db = db;
@@ -75,6 +85,7 @@ app.use('/api/invoices', invoicesRouter);
 app.use('/api/tasks', tasksRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/widgets', widgetsRouter);
+app.use('/api', telegramRouter);
 
 // Start Server
 const server = app.listen(PORT, () => {

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../api';
+import TelegramNotificationsWidget from '../../components/widgets/TelegramNotificationsWidget';
 
 const AdminProfile = () => {
   const { user } = useAuth();
@@ -166,7 +167,7 @@ const AdminProfile = () => {
 
       <div className="bg-white rounded-lg shadow-md">
         <div className="border-b">
-          <nav className="flex">
+          <nav className="flex flex-wrap">
             <button
               onClick={() => setActiveTab('profile')}
               className={`px-6 py-3 font-medium ${
@@ -176,6 +177,16 @@ const AdminProfile = () => {
               }`}
             >
               Профиль
+            </button>
+            <button
+              onClick={() => setActiveTab('telegram')}
+              className={`px-6 py-3 font-medium ${
+                activeTab === 'telegram'
+                  ? 'border-b-2 border-primary-600 text-primary-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Telegram
             </button>
             <button
               onClick={() => setActiveTab('security')}
@@ -244,6 +255,10 @@ const AdminProfile = () => {
                 </div>
               </div>
             </div>
+          )}
+
+          {activeTab === 'telegram' && (
+            <TelegramNotificationsWidget />
           )}
 
           {activeTab === 'security' && (

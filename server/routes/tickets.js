@@ -1,5 +1,12 @@
 const express = require('express');
 const { authenticateToken, requireRole } = require('./auth');
+const {
+  notifyClientNewTicket,
+  notifyClientTicketMessage,
+  notifyClientTicketStatusChange,
+  notifyAdminNewTicket,
+  notifyAdminTicketMessage
+} = require('../lib/telegramNotifications');
 
 const router = express.Router();
 
@@ -82,7 +89,7 @@ router.get('/:id', authenticateToken, (req, res) => {
 });
 
 // Создать тикет
-router.post('/', authenticateToken, (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   const { client_id, title, description } = req.body;
   const userRole = req.user.role;
   const db = req.db;
@@ -99,29 +106,93 @@ router.post('/', authenticateToken, (req, res) => {
     `INSERT INTO tickets (client_id, title, description, created_by, status)
      VALUES (?, ?, ?, ?, 'open')`,
     [actualClientId, title, description, createdBy],
-    function(err) {
+    async function(err) {
       if (err) {
         return res.status(500).json({ error: 'Ошибка при создании тикета' });
       }
-      res.json({ id: this.lastID, client_id: actualClientId, title, description, status: 'open' });
+
+      const ticketId = this.lastID;
+
+      // Отправляем уведомление клиенту
+      try {
+        await notifyClientNewTicket(db, actualClientId, ticketId, title);
+      } catch (error) {
+        console.error('Ошибка при отправке уведомления клиенту:', error);
+      }
+
+      // Отправляем уведомление администраторам
+      try {
+        db.all(
+          `SELECT u.id, u.email FROM users u WHERE u.role = 'admin'`,
+          async (err, admins) => {
+            if (!err && admins) {
+              for (const admin of admins) {
+                try {
+                  db.get(
+                    'SELECT project_name FROM clients WHERE id = ?',
+                    [actualClientId],
+                    async (err, client) => {
+                      if (!err && client) {
+                        await notifyAdminNewTicket(
+                          db,
+                          admin.id,
+                          client.project_name,
+                          ticketId,
+                          title,
+                          description
+                        );
+                      }
+                    }
+                  );
+                } catch (error) {
+                  console.error('Ошибка при отправке уведомления администратору:', error);
+                }
+              }
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Ошибка при получении администраторов:', error);
+      }
+
+      res.json({ id: ticketId, client_id: actualClientId, title, description, status: 'open' });
     }
   );
 });
 
 // Обновить тикет
-router.put('/:id', authenticateToken, requireRole('admin', 'specialist'), (req, res) => {
+router.put('/:id', authenticateToken, requireRole('admin', 'specialist'), async (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   const db = req.db;
 
-  db.run(
-    'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-    [status, id],
-    function(err) {
-      if (err) {
-        return res.status(500).json({ error: 'Ошибка при обновлении тикета' });
+  // Получаем текущий тикет для информации
+  db.get(
+    'SELECT * FROM tickets WHERE id = ?',
+    [id],
+    async (err, ticket) => {
+      if (err || !ticket) {
+        return res.status(404).json({ error: 'Тикет не найден' });
       }
-      res.json({ message: 'Тикет обновлен' });
+
+      db.run(
+        'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+        [status, id],
+        async function(err) {
+          if (err) {
+            return res.status(500).json({ error: 'Ошибка при обновлении тикета' });
+          }
+
+          // Отправляем уведомление клиенту об изменении статуса
+          try {
+            await notifyClientTicketStatusChange(db, ticket.client_id, id, ticket.title, status);
+          } catch (error) {
+            console.error('Ошибка при отправке уведомления об изменении статуса:', error);
+          }
+
+          res.json({ message: 'Тикет обновлен' });
+        }
+      );
     }
   );
 });
@@ -196,12 +267,12 @@ router.get('/:id/comments', authenticateToken, (req, res) => {
 });
 
 // Добавить комментарий к тикету
-router.post('/:id/comments', authenticateToken, (req, res) => {
+router.post('/:id/comments', authenticateToken, async (req, res) => {
   const { id } = req.params;
   const { message } = req.body;
   const db = req.db;
 
-  db.get('SELECT * FROM tickets WHERE id = ?', [id], (err, ticket) => {
+  db.get('SELECT * FROM tickets WHERE id = ?', [id], async (err, ticket) => {
     if (err || !ticket) {
       return res.status(404).json({ error: 'Тикет не найден' });
     }
@@ -217,10 +288,64 @@ router.post('/:id/comments', authenticateToken, (req, res) => {
       `INSERT INTO ticket_comments (ticket_id, user_id, client_id, message)
        VALUES (?, ?, ?, ?)`,
       [id, userId, clientId, message],
-      function(err) {
+      async function(err) {
         if (err) {
           return res.status(500).json({ error: 'Ошибка при создании комментария' });
         }
+
+        // Отправляем уведомления
+        try {
+          if (req.user.role === 'client') {
+            // Клиент отправляет сообщение - уведомляем администраторов
+            db.all(
+              `SELECT u.id, u.email FROM users u WHERE u.role = 'admin'`,
+              async (err, admins) => {
+                if (!err && admins) {
+                  for (const admin of admins) {
+                    try {
+                      db.get(
+                        'SELECT project_name FROM clients WHERE id = ?',
+                        [ticket.client_id],
+                        async (err, client) => {
+                          if (!err && client) {
+                            await notifyAdminTicketMessage(
+                              db,
+                              admin.id,
+                              client.project_name,
+                              id,
+                              ticket.title,
+                              client.project_name,
+                              message
+                            );
+                          }
+                        }
+                      );
+                    } catch (error) {
+                      console.error('Ошибка при отправке уведомления администратору:', error);
+                    }
+                  }
+                }
+              }
+            );
+          } else {
+            // Администратор отправляет сообщение - уведомляем клиента
+            try {
+              await notifyClientTicketMessage(
+                db,
+                ticket.client_id,
+                id,
+                ticket.title,
+                req.user.name,
+                message
+              );
+            } catch (error) {
+              console.error('Ошибка при отправке уведомления клиенту:', error);
+            }
+          }
+        } catch (error) {
+          console.error('Ошибка при отправке уведомлений:', error);
+        }
+
         res.json({ id: this.lastID, message: 'Комментарий добавлен' });
       }
     );

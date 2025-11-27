@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { authenticateToken, requireRole, upload } = require('./auth');
 const { generateInvoicePdfBuffer } = require('../pdfGenerator');
+const { notifyClientNewInvoice } = require('../lib/telegramNotifications');
 
 const router = express.Router();
 
@@ -119,7 +120,7 @@ router.post('/generate-pdf', authenticateToken, requireRole('admin'), async (req
 });
 
 // Создать счет
-router.post('/', authenticateToken, requireRole('admin'), upload.single('file'), (req, res) => {
+router.post('/', authenticateToken, requireRole('admin'), upload.single('file'), async (req, res) => {
   const { client_id, amount, date, comment } = req.body;
   const filePath = req.file ? `/uploads/invoices/${req.file.filename}` : null;
   const db = req.db;
@@ -128,12 +129,22 @@ router.post('/', authenticateToken, requireRole('admin'), upload.single('file'),
     `INSERT INTO invoices (client_id, amount, date, comment, file_path, status)
      VALUES (?, ?, ?, ?, ?, 'unpaid')`,
     [client_id, amount, date, comment || null, filePath],
-    function(err) {
+    async function(err) {
       if (err) {
         return res.status(500).json({ error: 'Ошибка при создании счета' });
       }
+
+      const invoiceId = this.lastID;
+
+      // Отправляем уведомление клиенту
+      try {
+        await notifyClientNewInvoice(db, client_id, invoiceId, amount, date);
+      } catch (error) {
+        console.error('Ошибка при отправке уведомления о счете:', error);
+      }
+
       res.json({
-        id: this.lastID,
+        id: invoiceId,
         client_id,
         amount,
         date,

@@ -47,6 +47,10 @@ const ClientDetail = () => {
   const [showConfirmDeleteClient, setShowConfirmDeleteClient] = useState(false);
   const [ticketToDelete, setTicketToDelete] = useState(null);
   const [showConfirmDeleteTicket, setShowConfirmDeleteTicket] = useState(false);
+  const [showTelegramMessageModal, setShowTelegramMessageModal] = useState(false);
+  const [telegramMessage, setTelegramMessage] = useState('');
+  const [sendingTelegram, setSendingTelegram] = useState(false);
+  const [telegramConnected, setTelegramConnected] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -55,18 +59,20 @@ const ClientDetail = () => {
 
   const fetchData = async () => {
     try {
-      const [clientRes, ticketsRes, invoicesRes, loginRes, tasksRes] = await Promise.all([
+      const [clientRes, ticketsRes, invoicesRes, loginRes, tasksRes, telegramRes] = await Promise.all([
         api.get(`/clients/${id}`),
         api.get(`/tickets/client/${id}`),
         api.get(`/invoices/client/${id}`),
         api.get(`/clients/${id}/login`).catch(() => ({ data: null })),
         api.get(`/tasks/client/${id}`).catch(() => ({ data: [] })),
+        api.get(`/telegram/client/${id}/status`).catch(() => ({ data: { connected: false } })),
       ]);
       setClient(clientRes.data);
       setTickets(ticketsRes.data);
       setInvoices(invoicesRes.data);
       setClientLogin(loginRes.data);
       setTasks(tasksRes.data || []);
+      setTelegramConnected(telegramRes.data.connected || false);
     } catch (error) {
       console.error('Ошибка при загрузке данных:', error);
     } finally {
@@ -110,6 +116,28 @@ const ClientDetail = () => {
       setChangePasswordValue('');
     } catch (error) {
       alert(error.response?.data?.error || 'Ошибка при изменении пароля');
+    }
+  };
+
+  const handleSendTelegramMessage = async (e) => {
+    e.preventDefault();
+    if (!telegramMessage.trim()) {
+      alert('Сообщение не может быть пустым');
+      return;
+    }
+
+    try {
+      setSendingTelegram(true);
+      await api.post(`/telegram/client/${id}/send-message`, {
+        message: telegramMessage,
+      });
+      alert('Сообщение отправлено!');
+      setShowTelegramMessageModal(false);
+      setTelegramMessage('');
+    } catch (error) {
+      alert(error.response?.data?.error || 'Ошибка при отправке сообщения');
+    } finally {
+      setSendingTelegram(false);
     }
   };
 
@@ -405,13 +433,22 @@ const ClientDetail = () => {
           ← Назад к списку
         </button>
         {user?.role === 'admin' && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-wrap">
             <button
               onClick={handleOpenEditModal}
               className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm sm:text-base w-full sm:w-auto"
             >
               Редактировать
             </button>
+            {telegramConnected && (
+              <button
+                onClick={() => setShowTelegramMessageModal(true)}
+                className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:bg-blue-500 text-sm sm:text-base w-full sm:w-auto"
+                title="Отправить сообщение в Telegram"
+              >
+                💬 Telegram
+              </button>
+            )}
             <button
               onClick={() => navigate(`/admin/clients/${id}/widgets`)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
@@ -1227,6 +1264,49 @@ const ClientDetail = () => {
                   onClick={() => {
                     setShowCreateTaskModal(false);
                     setNewTaskData({ title: '', description: '', deadline: '' });
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно для отправки Telegram сообщения */}
+      {showTelegramMessageModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-gray-800 mb-4">Отправить Telegram сообщение</h2>
+            <form onSubmit={handleSendTelegramMessage}>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Сообщение <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={telegramMessage}
+                  onChange={(e) => setTelegramMessage(e.target.value)}
+                  required
+                  rows="4"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none"
+                  placeholder="Введите сообщение для отправки в Telegram"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={sendingTelegram}
+                  className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
+                >
+                  {sendingTelegram ? 'Отправка...' : 'Отправить'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowTelegramMessageModal(false);
+                    setTelegramMessage('');
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
                 >

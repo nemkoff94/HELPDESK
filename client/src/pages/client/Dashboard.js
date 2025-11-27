@@ -6,6 +6,7 @@ import AdCampaignWidget from '../../components/widgets/AdCampaignWidget';
 import RenewalCalendarWidget from '../../components/widgets/RenewalCalendarWidget';
 import RecommendationsWidget from '../../components/widgets/RecommendationsWidget';
 import SiteAvailabilityWidget from '../../components/widgets/SiteAvailabilityWidget';
+import TelegramNotificationsWidget from '../../components/widgets/TelegramNotificationsWidget';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -159,6 +160,8 @@ const Dashboard = () => {
       </div>
 
       {/* Виджеты */}
+      <TelegramNotificationsWidget />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div>
           <AdCampaignWidget clientId={user?.id} api={api} />
