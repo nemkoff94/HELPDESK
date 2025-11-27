@@ -227,6 +227,37 @@ router.post('/telegram/user/disconnect', authenticateToken, (req, res) => {
 // ========== ADMIN ROUTES ==========
 
 /**
+ * Получает статус Telegram подключения клиента (для администратора)
+ */
+router.get('/telegram/client/:clientId/status', authenticateToken, requireRole('admin'), (req, res) => {
+  const db = req.db;
+  const { clientId } = req.params;
+
+  db.get(
+    'SELECT id, enabled, telegram_username FROM client_telegram WHERE client_id = ?',
+    [clientId],
+    (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Ошибка сервера' });
+      }
+
+      if (!row) {
+        return res.json({
+          connected: false,
+          enabled: false
+        });
+      }
+
+      res.json({
+        connected: row.enabled === 1,
+        enabled: row.enabled === 1,
+        username: row.telegram_username
+      });
+    }
+  );
+});
+
+/**
  * Отправляет кастомное уведомление клиенту в Telegram
  */
 router.post('/telegram/client/:clientId/send-message', authenticateToken, requireRole('admin'), async (req, res) => {
