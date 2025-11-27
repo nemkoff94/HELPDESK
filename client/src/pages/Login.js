@@ -144,7 +144,7 @@ const Login = () => {
         </form>
 
         <div className="mt-6 text-xs text-gray-500 text-center space-y-1">
-          <p className="font-medium">Если у вас нет логина и пароля для входа в панель - обратитесь в нашу поддержку zabota@obsidianweb.ru</p>
+          <p className="font-medium">Если у вас нет логина и пароля для входа в панель - напишите нам на почту zabota@obsidianweb.ru</p>
         </div>
       </div>
     </div>
