@@ -4,7 +4,7 @@ const { sendClientNotification, sendAdminNotification } = require('./telegramBot
  * Форматирует и отправляет уведомление о новом тикете клиенту
  */
 const notifyClientNewTicket = async (db, clientId, ticketId, ticketTitle) => {
-  const message = `🎫 <b>Новый тикет</b>\n\n<b>${ticketTitle}</b>\n\nТикет #${ticketId}`;
+  const message = `🎫 <b>Создан новый тикет</b>\n\n<b>${ticketTitle}</b>\n\nТикет #${ticketId} \n\nВы можете следить за обновлениями в панели https://obs-panel.ru`;
   return await sendClientNotification(db, clientId, message);
 };
 
@@ -35,7 +35,7 @@ const notifyClientTicketStatusChange = async (db, clientId, ticketId, ticketTitl
  * Форматирует и отправляет уведомление о новом счете клиенту
  */
 const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => {
-  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${amount.toLocaleString('ru-RU')} ₽\n<b>Дата:</b> ${new Date(date).toLocaleDateString('ru-RU')}\n\nСчет #${invoiceId}`;
+  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${amount.toLocaleString('ru-RU')} ₽\n<b>Дата:</b> ${new Date(date).toLocaleDateString('ru-RU')}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать счет в вашей панели https://obs-panel.ru`;
   return await sendClientNotification(db, clientId, message);
 };
 
