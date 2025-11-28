@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api';
+import formatDate from '../../utils/formatDate';
 
 const ClientWidgetsManager = () => {
   const { id } = useParams();
@@ -492,7 +493,7 @@ const ClientWidgetsManager = () => {
                             <div key={update.id} className="bg-gray-50 p-3 rounded border border-gray-200 flex justify-between items-center">
                               <div>
                                 <p className="font-medium text-gray-800">{update.title}</p>
-                                <p className="text-sm text-gray-600 mt-1">{date.toLocaleDateString('ru-RU')}</p>
+                                <p className="text-sm text-gray-600 mt-1">{formatDate(update.date, { year: 'numeric', month: '2-digit', day: '2-digit' })}</p>
                               </div>
                               <span className={`text-sm px-3 py-1 rounded ${statusColor}`}>
                                 {statusText}
@@ -658,7 +659,7 @@ const ClientWidgetsManager = () => {
                 <div className="bg-gray-50 p-4 rounded border border-gray-200">
                   <p className="text-sm font-medium text-gray-700 mb-2">Последняя проверка:</p>
                   <p className="text-sm text-gray-600">
-                    {new Date(siteAvailability.last_check_time).toLocaleString('ru-RU')}
+                    {formatDate(siteAvailability.last_check_time)}
                   </p>
                   <p className="text-sm font-medium mt-2">Статус: {siteAvailability.last_check_status === 'success' ? '✓ Успех' : '✗ Ошибка'}</p>
                   <p className="text-sm text-gray-600 mt-1">{siteAvailability.last_check_message}</p>

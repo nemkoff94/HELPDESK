@@ -1,4 +1,5 @@
 import React from 'react';
+import formatDate from '../../utils/formatDate';
 
 const InvoicesTab = ({ invoices, user, id, navigate, onStatusChange, onDeleteInvoice }) => {
   return (
@@ -25,7 +26,7 @@ const InvoicesTab = ({ invoices, user, id, navigate, onStatusChange, onDeleteInv
           >
             <div className="flex-1">
               <p className="font-semibold">
-                {new Date(invoice.date).toLocaleDateString('ru-RU')}
+                {formatDate(invoice.date, { year: 'numeric', month: '2-digit', day: '2-digit' })}
               </p>
               <p className="text-sm text-gray-600">
                 {invoice.amount.toLocaleString('ru-RU')} ₽

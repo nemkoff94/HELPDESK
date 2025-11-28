@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../hooks/useAuth';
+import formatDate from '../../utils/formatDate';
 
 const TicketsList = () => {
   const navigate = useNavigate();
@@ -94,19 +95,25 @@ const TicketsList = () => {
               <div
                 key={ticket.id}
                 onClick={() => navigate(`/client/tickets/${ticket.id}`)}
-                className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors ${ticket.has_unread_response ? 'ring-1 ring-primary-200' : ''}`}
               >
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800 mb-1">
-                      {ticket.title}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-1">
+                      {ticket.has_unread_response && (
+                        <span className="inline-block h-3 w-3 rounded-full bg-primary-600 animate-pulse" aria-hidden="true" />
+                      )}
+                      <h3 className="font-semibold text-gray-800">
+                        {ticket.title}
+                      </h3>
+                    </div>
                     <p className="text-sm text-gray-600 line-clamp-2">
                       {ticket.description}
                     </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      {new Date(ticket.created_at).toLocaleString('ru-RU')}
-                    </p>
+                    <div className="text-xs text-gray-500 mt-2 flex gap-4">
+                      <div>Создано: {formatDate(ticket.created_at_utc || ticket.created_at)}</div>
+                      <div>Последний ответ: {ticket.last_comment_at_utc ? formatDate(ticket.last_comment_at_utc) : (ticket.last_comment_at ? formatDate(ticket.last_comment_at) : '—')}</div>
+                    </div>
                   </div>
                   <span
                     className={`ml-4 px-2 py-1 rounded text-xs font-medium ${getTicketStatusColor(

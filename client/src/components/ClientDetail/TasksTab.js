@@ -1,4 +1,5 @@
 import React from 'react';
+import formatDate from '../../utils/formatDate';
 
 const TasksTab = ({ tasks, user, navigate, onDeleteTask }) => {
   const getTaskStatusColor = (status) => {
@@ -82,11 +83,11 @@ const TasksTab = ({ tasks, user, navigate, onDeleteTask }) => {
                   )}
                   <div className="flex items-center gap-4 text-xs text-gray-500">
                     <span>
-                      Создана: {new Date(task.created_at).toLocaleDateString('ru-RU')}
+                      Создана: {formatDate(task.created_at, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                     </span>
                     {task.deadline && (
                       <span className={overdue ? 'text-red-600 font-semibold' : ''}>
-                        Дедлайн: {new Date(task.deadline).toLocaleDateString('ru-RU')}
+                        Дедлайн: {formatDate(task.deadline, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                       </span>
                     )}
                     {task.created_by_name && (

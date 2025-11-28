@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api';
 import transliterateForDisplay from '../../utils/transliterate';
 import { useAuth } from '../../hooks/useAuth';
+import formatDate from '../../utils/formatDate';
 
 const SpecialistTicketDetail = () => {
   const { id } = useParams();
@@ -169,7 +170,7 @@ const SpecialistTicketDetail = () => {
               {ticket.title}
             </h1>
             <p className="text-sm text-gray-500">
-              Создан: {new Date(ticket.created_at).toLocaleString('ru-RU')}
+              Создан: {formatDate(ticket.created_at_utc || ticket.created_at)}
             </p>
           </div>
           <span
@@ -197,7 +198,7 @@ const SpecialistTicketDetail = () => {
                         {att.original_name ? transliterateForDisplay(att.original_name) : att.filename}
                       </a>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">{new Date(att.created_at).toLocaleString('ru-RU')}</span>
+                        <span className="text-xs text-gray-500">{formatDate(att.created_at_utc || att.created_at)}</span>
                         {expired && <span className="text-xs text-yellow-600">Устарело</span>}
                         {user?.role === 'admin' && (
                           <button onClick={() => handleDeleteAttachment(att.id)} className="text-red-600 text-sm">Удалить</button>
@@ -238,8 +239,8 @@ const SpecialistTicketDetail = () => {
                     </p>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">
-                  {new Date(comment.created_at).toLocaleString('ru-RU')}
+                  <p className="text-xs text-gray-500">
+                  {formatDate(comment.created_at_utc || comment.created_at)}
                 </p>
               </div>
               <p className="text-gray-700 whitespace-pre-wrap">
@@ -256,7 +257,7 @@ const SpecialistTicketDetail = () => {
                           <a href={fileUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">
                             {att.original_name ? transliterateForDisplay(att.original_name) : att.filename}
                           </a>
-                          <div className="text-xs text-gray-500">{new Date(att.created_at).toLocaleString('ru-RU')}</div>
+                          <div className="text-xs text-gray-500">{formatDate(att.created_at_utc || att.created_at)}</div>
                         </li>
                       )})}
                   </ul>

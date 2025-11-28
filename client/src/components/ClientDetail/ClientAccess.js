@@ -1,4 +1,5 @@
 import React from 'react';
+import formatDate from '../../utils/formatDate';
 
 const ClientAccess = ({ clientLogin, user, onCreateLogin, onChangePassword, onGeneratePassword }) => {
   if (user?.role !== 'admin') {
@@ -31,7 +32,7 @@ const ClientAccess = ({ clientLogin, user, onCreateLogin, onChangePassword, onGe
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-3">
-            Создан: {new Date(clientLogin.created_at).toLocaleString('ru-RU')}
+            Создан: {formatDate(clientLogin.created_at)}
           </p>
         </div>
       ) : (

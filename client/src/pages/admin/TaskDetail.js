@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api';
+import formatDate from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 
 const TaskDetail = () => {
@@ -200,7 +201,7 @@ const TaskDetail = () => {
               </div>
               <div className="ml-3">
                 <p className="text-sm text-red-700 font-medium">
-                  ⚠️ Задача просрочена! Дедлайн: {new Date(task.deadline).toLocaleDateString('ru-RU')}
+                  ⚠️ Задача просрочена! Дедлайн: {formatDate(task.deadline, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                 </p>
               </div>
             </div>
@@ -213,11 +214,11 @@ const TaskDetail = () => {
               {task.title}
             </h1>
             <p className="text-sm text-gray-500">
-              Создана: {new Date(task.created_at).toLocaleString('ru-RU')} {task.created_by_name && `(${task.created_by_name})`}
+              Создана: {formatDate(task.created_at)} {task.created_by_name && `(${task.created_by_name})`}
             </p>
             {task.deadline && (
               <p className={`text-sm mt-1 ${overdue ? 'text-red-600 font-semibold' : 'text-gray-600'}`}>
-                Дедлайн: {new Date(task.deadline).toLocaleDateString('ru-RU')}
+                Дедлайн: {formatDate(task.deadline, { year: 'numeric', month: '2-digit', day: '2-digit' })}
               </p>
             )}
           </div>
@@ -259,7 +260,7 @@ const TaskDetail = () => {
                     </p>
                   </div>
                   <p className="text-xs text-gray-500">
-                    {new Date(comment.created_at).toLocaleString('ru-RU')}
+                    {formatDate(comment.created_at)}
                   </p>
                 </div>
                 <p className="text-gray-700 whitespace-pre-wrap">

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import formatDate from '../../utils/formatDate';
 const RenewalCalendarWidget = ({ clientId, api }) => {
   const [widget, setWidget] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -61,16 +62,20 @@ const RenewalCalendarWidget = ({ clientId, api }) => {
 
   const formatDateDisplay = (dateString) => {
     if (!dateString) return 'Не установлена';
-    const date = new Date(dateString);
+    // Display only the date, but append a short relative suffix in parentheses
     const daysUntil = getDaysUntil(dateString);
-    
-    if (daysUntil < 0) {
-      return `${date.toLocaleDateString('ru-RU')} (просрочено на ${Math.abs(daysUntil)} дн.)`;
+    const dateOnly = formatDate(dateString, { year: 'numeric', month: '2-digit', day: '2-digit' });
+    let suffix = '';
+    if (daysUntil === null) {
+      suffix = '';
+    } else if (daysUntil < 0) {
+      suffix = ` (просрочено на ${Math.abs(daysUntil)} дн.)`;
     } else if (daysUntil === 0) {
-      return `${date.toLocaleDateString('ru-RU')} (сегодня!)`;
+      suffix = ` (сегодня!)`;
     } else {
-      return `${date.toLocaleDateString('ru-RU')} (через ${daysUntil} дн.)`;
+      suffix = ` (через ${daysUntil} дн.)`;
     }
+    return `${dateOnly}${suffix}`;
   };
 
   if (loading) {

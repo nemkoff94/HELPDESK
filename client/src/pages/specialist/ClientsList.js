@@ -96,18 +96,25 @@ const SpecialistClientsList = () => {
                   <div
                     key={ticket.id}
                     onClick={() => navigate(`/specialist/tickets/${ticket.id}`)}
-                    className="border rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`border rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors ${ticket.has_unread_response ? 'ring-1 ring-primary-200' : ''}`}
                   >
-                    <p className="font-medium text-sm text-gray-800 mb-1">
-                      {ticket.title}
-                    </p>
-                    <span
-                      className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTicketStatusColor(
-                        ticket.status
-                      )}`}
-                    >
-                      {getTicketStatusText(ticket.status)}
-                    </span>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {ticket.has_unread_response && (
+                          <span className="inline-block h-3 w-3 rounded-full bg-primary-600 animate-pulse" aria-hidden="true" />
+                        )}
+                        <p className="font-medium text-sm text-gray-800">
+                          {ticket.title}
+                        </p>
+                      </div>
+                      <span
+                        className={`inline-block px-2 py-1 rounded text-xs font-medium ${getTicketStatusColor(
+                          ticket.status
+                        )}`}
+                      >
+                        {getTicketStatusText(ticket.status)}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>

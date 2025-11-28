@@ -14,6 +14,36 @@ const { v4: uuidv4 } = require('uuid');
 
 const router = express.Router();
 
+// Helper: format DB datetime string into Moscow-localized string (ru-RU)
+const formatToMoscow = (dbDateStr) => {
+  if (!dbDateStr) return null;
+  try {
+    // Expecting format like 'YYYY-MM-DD HH:MM:SS' from SQLite; treat as UTC
+    const asIso = dbDateStr.replace(' ', 'T') + 'Z';
+    const d = new Date(asIso);
+    const formatter = new Intl.DateTimeFormat('ru-RU', {
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+      timeZone: 'Europe/Moscow'
+    });
+    return formatter.format(d);
+  } catch (e) {
+    return dbDateStr;
+  }
+};
+
+// Helper: convert DB datetime string to ISO UTC (assumes DB string is UTC or should be treated as such)
+const toISOUTC = (dbDateStr) => {
+  if (!dbDateStr) return null;
+  try {
+    const asIso = dbDateStr.replace(' ', 'T') + 'Z';
+    return new Date(asIso).toISOString();
+  } catch (e) {
+    return null;
+  }
+};
+
 // Ensure uploads/attachments directory exists
 const uploadsDir = path.join(__dirname, '..', 'uploads', 'attachments');
 fs.mkdirSync(uploadsDir, { recursive: true });
@@ -51,38 +81,92 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Получить все тикеты
+// Получить все тикеты (для клиента — только его, для админа — все)
 router.get('/', authenticateToken, (req, res) => {
   const userRole = req.user.role;
   const db = req.db;
-  let query;
-  let params = [];
+
+  // В запрос добавляем данные о последнем комментарии и кто его написал, а также время последнего прочтения конкретным пользователем/клиентом
+  let baseQuery = `
+    SELECT
+      t.*,
+      c.project_name as client_name,
+      (SELECT MAX(created_at) FROM ticket_comments tc WHERE tc.ticket_id = t.id) AS last_comment_at,
+      (SELECT tc.user_id FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) AS last_comment_user_id,
+      (SELECT tc.client_id FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) AS last_comment_client_id,
+      (SELECT tr.last_read_at FROM ticket_reads tr WHERE tr.ticket_id = t.id AND (
+        (tr.user_id IS NOT NULL AND tr.user_id = ?) OR (tr.client_id IS NOT NULL AND tr.client_id = ?)
+      ) LIMIT 1) AS last_read_at
+    FROM tickets t
+    JOIN clients c ON t.client_id = c.id
+  `;
+
+  const params = [req.user.id, req.user.id];
 
   if (userRole === 'client') {
-    query = `
-      SELECT t.*, c.project_name as client_name
-      FROM tickets t
-      JOIN clients c ON t.client_id = c.id
-      WHERE t.client_id = ?
-      ORDER BY t.created_at DESC
-    `;
-    params = [req.user.id];
-  } else {
-    query = `
-      SELECT t.*, c.project_name as client_name
-      FROM tickets t
-      JOIN clients c ON t.client_id = c.id
-      ORDER BY 
-        CASE WHEN t.status IN ('open', 'in_progress') THEN 0 ELSE 1 END,
-        t.created_at DESC
-    `;
+    baseQuery += ` WHERE t.client_id = ?`;
+    params.push(req.user.id);
   }
 
-  db.all(query, params, (err, tickets) => {
+  db.all(baseQuery, params, (err, tickets) => {
     if (err) {
       return res.status(500).json({ error: 'Ошибка при получении тикетов' });
     }
-    res.json(tickets);
+
+    // Вычисляем флаг непрочитанного ответа для текущего читателя
+    const processed = tickets.map((ticket) => {
+      const lastCommentAt = ticket.last_comment_at;
+      const lastCommentUserId = ticket.last_comment_user_id; // not null => staff wrote last
+      const lastCommentClientId = ticket.last_comment_client_id; // not null => client wrote last
+      const lastReadAt = ticket.last_read_at; // may be null
+
+      let has_unread_response = false;
+      if (userRole === 'client') {
+        // unread if last comment by staff and after client's last read
+        if (lastCommentAt && lastCommentUserId != null) {
+          if (!lastReadAt || new Date(lastCommentAt) > new Date(lastReadAt)) {
+            has_unread_response = true;
+          }
+        }
+      } else {
+        // admin/specialist: unread if last comment by client and after user's last read
+        if (lastCommentAt && lastCommentClientId != null) {
+          if (!lastReadAt || new Date(lastCommentAt) > new Date(lastReadAt)) {
+            has_unread_response = true;
+          }
+        }
+      }
+
+      return {
+        ...ticket,
+        has_unread_response,
+      };
+    });
+
+    // Сортируем: сначала непрочитанные, затем открытые/в работе, затем по дате
+    processed.sort((a, b) => {
+      if (a.has_unread_response && !b.has_unread_response) return -1;
+      if (!a.has_unread_response && b.has_unread_response) return 1;
+      const aPriority = ['open', 'in_progress'].includes(a.status) ? 0 : 1;
+      const bPriority = ['open', 'in_progress'].includes(b.status) ? 0 : 1;
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    // Добавим ISO/UTC-поля и (совместимо) msk-поля
+    const formatted = processed.map((t) => ({
+      ...t,
+      created_at_utc: toISOUTC(t.created_at),
+      updated_at_utc: t.updated_at ? toISOUTC(t.updated_at) : null,
+      last_comment_at_utc: t.last_comment_at ? toISOUTC(t.last_comment_at) : null,
+      last_read_at_utc: t.last_read_at ? toISOUTC(t.last_read_at) : null,
+      created_at_msk: formatToMoscow(t.created_at),
+      updated_at_msk: t.updated_at ? formatToMoscow(t.updated_at) : null,
+      last_comment_at_msk: t.last_comment_at ? formatToMoscow(t.last_comment_at) : null,
+      last_read_at_msk: t.last_read_at ? formatToMoscow(t.last_read_at) : null,
+    }));
+
+    res.json(formatted);
   });
 });
 
@@ -96,16 +180,55 @@ router.get('/client/:clientId', authenticateToken, (req, res) => {
     return res.status(403).json({ error: 'Недостаточно прав' });
   }
 
-  db.all(
-    'SELECT * FROM tickets WHERE client_id = ? ORDER BY created_at DESC',
-    [clientId],
-    (err, tickets) => {
-      if (err) {
-        return res.status(500).json({ error: 'Ошибка при получении тикетов' });
-      }
-      res.json(tickets);
+  // Получаем тикеты клиента и поля для определения непрочитанных ответов
+  const query = `
+    SELECT
+      t.*,
+      (SELECT MAX(created_at) FROM ticket_comments tc WHERE tc.ticket_id = t.id) AS last_comment_at,
+      (SELECT tc.user_id FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) AS last_comment_user_id,
+      (SELECT tr.last_read_at FROM ticket_reads tr WHERE tr.ticket_id = t.id AND tr.client_id = ? LIMIT 1) AS last_read_at
+    FROM tickets t
+    WHERE t.client_id = ?
+    ORDER BY t.created_at DESC
+  `;
+
+  db.all(query, [clientId, clientId], (err, tickets) => {
+    if (err) {
+      return res.status(500).json({ error: 'Ошибка при получении тикетов' });
     }
-  );
+
+    const processed = tickets.map((ticket) => {
+      const lastCommentAt = ticket.last_comment_at;
+      const lastCommentUserId = ticket.last_comment_user_id; // staff id if last comment by staff
+      const lastReadAt = ticket.last_read_at;
+
+      let has_unread_response = false;
+      if (lastCommentAt && lastCommentUserId != null) {
+        if (!lastReadAt || new Date(lastCommentAt) > new Date(lastReadAt)) {
+          has_unread_response = true;
+        }
+      }
+
+      return {
+        ...ticket,
+        has_unread_response,
+        created_at_utc: toISOUTC(ticket.created_at),
+        updated_at_utc: ticket.updated_at ? toISOUTC(ticket.updated_at) : null,
+        last_comment_at_utc: ticket.last_comment_at ? toISOUTC(ticket.last_comment_at) : null,
+        last_read_at_utc: ticket.last_read_at ? toISOUTC(ticket.last_read_at) : null,
+        created_at_msk: formatToMoscow(ticket.created_at),
+      };
+    });
+
+    // sort unread first
+    processed.sort((a, b) => {
+      if (a.has_unread_response && !b.has_unread_response) return -1;
+      if (!a.has_unread_response && b.has_unread_response) return 1;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
+
+    res.json(processed);
+  });
 });
 
 // Получить тикет по ID
@@ -125,16 +248,56 @@ router.get('/:id', authenticateToken, (req, res) => {
       return res.status(403).json({ error: 'Недостаточно прав' });
     }
 
-    // Получим вложения привязанные к самому тикету (не к комментариям)
-    db.all('SELECT * FROM attachments WHERE ticket_id = ? AND comment_id IS NULL', [id], (err, attachments) => {
-      if (err) {
-        console.error('Ошибка при получении вложений тикета:', err);
-        ticket.attachments = [];
-      } else {
-        ticket.attachments = attachments || [];
-      }
-      res.json(ticket);
-    });
+    // Обновляем пометку о прочтении для текущего пользователя/клиента
+    const readerUserId = req.user.role !== 'client' ? req.user.id : null;
+    const readerClientId = req.user.role === 'client' ? req.user.id : null;
+
+    const upsertRead = () => {
+      // Проверим есть ли запись
+      db.get(
+        'SELECT * FROM ticket_reads WHERE ticket_id = ? AND ((user_id IS NOT NULL AND user_id = ?) OR (client_id IS NOT NULL AND client_id = ?))',
+        [id, readerUserId, readerClientId],
+        (err, row) => {
+          if (err) {
+            console.error('Ошибка при проверке ticket_reads:', err);
+          }
+          if (row) {
+            db.run('UPDATE ticket_reads SET last_read_at = CURRENT_TIMESTAMP WHERE id = ?', [row.id], (err) => {
+              if (err) console.error('Ошибка при обновлении ticket_reads:', err);
+            });
+          } else {
+            db.run('INSERT INTO ticket_reads (ticket_id, user_id, client_id, last_read_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)', [id, readerUserId, readerClientId], (err) => {
+              if (err) console.error('Ошибка при вставке ticket_reads:', err);
+            });
+          }
+        }
+      );
+    };
+
+      // Получим вложения привязанные к самому тикету (не к комментариям)
+      db.all('SELECT * FROM attachments WHERE ticket_id = ? AND comment_id IS NULL', [id], (err, attachments) => {
+        if (err) {
+          console.error('Ошибка при получении вложений тикета:', err);
+          ticket.attachments = [];
+        } else {
+          ticket.attachments = (attachments || []).map(a => ({ ...a, created_at_msk: formatToMoscow(a.created_at) }));
+        }
+        // Обновляем пометку о прочтении асинхронно
+        try {
+          upsertRead();
+        } catch (e) {
+          console.error('Ошибка при upsertRead:', e);
+        }
+        // Добавим msk-поля в ответ на конкретный тикет
+        const resp = {
+          ...ticket,
+          created_at_utc: toISOUTC(ticket.created_at),
+          updated_at_utc: ticket.updated_at ? toISOUTC(ticket.updated_at) : null,
+          created_at_msk: formatToMoscow(ticket.created_at),
+          updated_at_msk: ticket.updated_at ? formatToMoscow(ticket.updated_at) : null,
+        };
+        res.json(resp);
+      });
   });
 });
 
@@ -369,12 +532,15 @@ router.get('/:id/comments', authenticateToken, (req, res) => {
 
         const attachmentsMap = {};
         for (const a of atts) {
+          a.created_at_msk = formatToMoscow(a.created_at);
           if (!attachmentsMap[a.comment_id]) attachmentsMap[a.comment_id] = [];
           attachmentsMap[a.comment_id].push(a);
         }
 
         for (const com of comments) {
           com.attachments = attachmentsMap[com.id] || [];
+          com.created_at_msk = formatToMoscow(com.created_at);
+          com.created_at_utc = toISOUTC(com.created_at);
         }
 
         res.json(comments);

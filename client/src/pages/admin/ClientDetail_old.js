@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import ConfirmModal from '../../components/ConfirmModal';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api';
+import formatDate from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 
 const ClientDetail = () => {
@@ -598,7 +599,7 @@ const ClientDetail = () => {
                 </div>
               </div>
               <p className="text-xs text-gray-500 mt-3">
-                Создан: {new Date(clientLogin.created_at).toLocaleString('ru-RU')}
+                Создан: {formatDate(clientLogin.created_at)}
               </p>
             </div>
           ) : (
@@ -952,7 +953,7 @@ const ClientDetail = () => {
                           {ticket.description}
                         </p>
                         <p className="text-xs text-gray-500 mt-2">
-                          {new Date(ticket.created_at).toLocaleString('ru-RU')}
+                          {formatDate(ticket.created_at)}
                         </p>
                       </div>
                       <div className="flex items-start gap-2">
@@ -1007,7 +1008,7 @@ const ClientDetail = () => {
                   >
                     <div className="flex-1">
                       <p className="font-semibold">
-                        {new Date(invoice.date).toLocaleDateString('ru-RU')}
+                        {formatDate(invoice.date, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                       </p>
                       <p className="text-sm text-gray-600">
                         {invoice.amount.toLocaleString('ru-RU')} ₽
@@ -1181,11 +1182,11 @@ const ClientDetail = () => {
                           )}
                           <div className="flex items-center gap-4 text-xs text-gray-500">
                             <span>
-                              Создана: {new Date(task.created_at).toLocaleDateString('ru-RU')}
+                              Создана: {formatDate(task.created_at, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                             </span>
                             {task.deadline && (
                               <span className={overdue ? 'text-red-600 font-semibold' : ''}>
-                                Дедлайн: {new Date(task.deadline).toLocaleDateString('ru-RU')}
+                                Дедлайн: {formatDate(task.deadline, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                               </span>
                             )}
                             {task.created_by_name && (

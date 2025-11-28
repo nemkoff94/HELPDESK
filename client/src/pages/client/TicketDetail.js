@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api';
 import transliterateForDisplay from '../../utils/transliterate';
 import { useAuth } from '../../hooks/useAuth';
+import formatDate from '../../utils/formatDate';
 
 const ClientTicketDetail = () => {
   const { id } = useParams();
@@ -149,7 +150,7 @@ const ClientTicketDetail = () => {
         <div className="flex justify-between items-start mb-4">
           <div>
             <h1 className="text-2xl font-bold text-gray-800 mb-2">{ticket.title}</h1>
-            <p className="text-sm text-gray-500">Создан: {new Date(ticket.created_at).toLocaleString('ru-RU')}</p>
+            <p className="text-sm text-gray-500">Создан: {formatDate(ticket.created_at_utc || ticket.created_at)}</p>
           </div>
           <span className={`px-3 py-1 rounded text-sm font-medium ${getStatusColor(ticket.status)}`}>
             {getStatusText(ticket.status)}
@@ -172,7 +173,7 @@ const ClientTicketDetail = () => {
                             {att.original_name ? transliterateForDisplay(att.original_name) : att.filename}
                           </a>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-gray-500">{new Date(att.created_at).toLocaleString('ru-RU')}</span>
+                        <span className="text-xs text-gray-500">{formatDate(att.created_at_utc || att.created_at)}</span>
                         {expired && <span className="text-xs text-yellow-600">Устарело</span>}
                         {user?.role === 'admin' && (
                           <button onClick={() => handleDeleteAttachment(att.id)} className="text-red-600 text-sm">Удалить</button>
@@ -203,7 +204,7 @@ const ClientTicketDetail = () => {
                     <p className="text-xs text-gray-500">{comment.user_role === 'admin' ? 'Администратор' : 'Специалист'}</p>
                   )}
                 </div>
-                <p className="text-xs text-gray-500">{new Date(comment.created_at).toLocaleString('ru-RU')}</p>
+                <p className="text-xs text-gray-500">{formatDate(comment.created_at_utc || comment.created_at)}</p>
               </div>
               <p className="text-gray-700 whitespace-pre-wrap">{comment.message}</p>
               {comment.attachments && comment.attachments.length > 0 && (
@@ -215,7 +216,7 @@ const ClientTicketDetail = () => {
                       return (
                         <li key={att.id} className="flex items-center justify-between">
                           <a href={fileUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">{att.original_name ? transliterateForDisplay(att.original_name) : att.filename}</a>
-                          <div className="text-xs text-gray-500">{new Date(att.created_at).toLocaleString('ru-RU')}</div>
+                          <div className="text-xs text-gray-500">{formatDate(att.created_at_utc || att.created_at)}</div>
                         </li>
                       );
                     })}

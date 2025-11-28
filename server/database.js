@@ -77,6 +77,18 @@ const initializeDatabase = (db) => {
       FOREIGN KEY (client_id) REFERENCES clients(id)
     )`);
 
+    // Отметки о прочтении тикета для пользователей и клиентов
+    db.run(`CREATE TABLE IF NOT EXISTS ticket_reads (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER NOT NULL,
+      user_id INTEGER,
+      client_id INTEGER,
+      last_read_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+      FOREIGN KEY (user_id) REFERENCES users(id),
+      FOREIGN KEY (client_id) REFERENCES clients(id)
+    )`);
+
     // Счета
     db.run(`CREATE TABLE IF NOT EXISTS invoices (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

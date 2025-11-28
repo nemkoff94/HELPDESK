@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../../api';
+import formatDate from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 
 const InvoicesList = () => {
@@ -74,7 +75,7 @@ const InvoicesList = () => {
               >
                 <div>
                   <p className="font-semibold">
-                    {new Date(invoice.date).toLocaleDateString('ru-RU')}
+                    {formatDate(invoice.date, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                   </p>
                   <p className="text-sm text-gray-600">
                     {invoice.amount.toLocaleString('ru-RU')} ₽

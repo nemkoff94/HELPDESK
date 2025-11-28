@@ -7,6 +7,7 @@ import RenewalCalendarWidget from '../../components/widgets/RenewalCalendarWidge
 import RecommendationsWidget from '../../components/widgets/RecommendationsWidget';
 import SiteAvailabilityWidget from '../../components/widgets/SiteAvailabilityWidget';
 import TelegramNotificationsWidget from '../../components/widgets/TelegramNotificationsWidget';
+import formatDate from '../../utils/formatDate';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -183,16 +184,25 @@ const Dashboard = () => {
                   <div
                     key={ticket.id}
                     onClick={() => navigate(`/client/tickets/${ticket.id}`)}
-                    className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors ${ticket.has_unread_response ? 'ring-1 ring-primary-200' : ''}`}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
-                        <h3 className="font-semibold text-gray-800 mb-1">
-                          {ticket.title}
-                        </h3>
-                        <p className="text-sm text-gray-600 line-clamp-2">
+                        <div className="flex items-center gap-2 mb-1">
+                          {ticket.has_unread_response && (
+                            <span className="inline-block h-3 w-3 rounded-full bg-primary-600 animate-pulse" aria-hidden="true" />
+                          )}
+                          <h3 className="font-semibold text-gray-800">
+                            {ticket.title}
+                          </h3>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2 mb-2">
                           {ticket.description}
                         </p>
+                        <div className="text-xs text-gray-500 flex gap-4">
+                          <div>Создано: {formatDate(ticket.created_at_utc || ticket.created_at)}</div>
+                          <div>Последний ответ: {ticket.last_comment_at_utc ? formatDate(ticket.last_comment_at_utc) : (ticket.last_comment_at ? formatDate(ticket.last_comment_at) : '—')}</div>
+                        </div>
                       </div>
                       <span
                         className={`ml-4 px-2 py-1 rounded text-xs font-medium whitespace-nowrap ${getTicketStatusColor(
@@ -230,7 +240,7 @@ const Dashboard = () => {
                   >
                     <div>
                       <p className="font-semibold">
-                        {new Date(invoice.date).toLocaleDateString('ru-RU')}
+                        {formatDate(invoice.date, { year: 'numeric', month: '2-digit', day: '2-digit' })}
                       </p>
                       <p className="text-sm text-gray-600">
                         {invoice.amount.toLocaleString('ru-RU')} ₽

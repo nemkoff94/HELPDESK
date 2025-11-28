@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import formatDate from '../../utils/formatDate';
 
 const SiteAvailabilityWidget = ({ clientId, api }) => {
   const [widget, setWidget] = useState(null);
@@ -88,9 +89,9 @@ const SiteAvailabilityWidget = ({ clientId, api }) => {
           >
             {isChecking ? 'Запуск...' : 'Запустить проверку'}
           </button>
-        ) : (
+          ) : (
           <div className="text-sm text-gray-600">
-            Проверку можно запустить не чаще 1 раза в сутки. Последняя проверка: {new Date(widget.last_check_time).toLocaleString('ru-RU')}
+            Проверку можно запустить не чаще 1 раза в сутки. Последняя проверка: {formatDate(widget.last_check_time)}
           </div>
         )}
       </div>
