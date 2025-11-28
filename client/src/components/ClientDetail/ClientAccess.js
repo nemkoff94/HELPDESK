@@ -1,7 +1,7 @@
 import React from 'react';
 import formatDate from '../../utils/formatDate';
 
-const ClientAccess = ({ clientLogin, user, onCreateLogin, onChangePassword, onGeneratePassword }) => {
+const ClientAccess = ({ clientLogin, user, onCreateLogin, onChangePassword, onGeneratePassword, telegramConnected, onOpenTelegram }) => {
   if (user?.role !== 'admin') {
     return null;
   }
@@ -31,9 +31,18 @@ const ClientAccess = ({ clientLogin, user, onCreateLogin, onChangePassword, onGe
               </button>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3">
-            Создан: {formatDate(clientLogin.created_at)}
-          </p>
+          <div className="flex items-center justify-between mt-3 gap-3">
+            <p className="text-xs text-gray-500">Создан: {formatDate(clientLogin.created_at)}</p>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${telegramConnected ? 'bg-green-500' : 'bg-gray-400'}`} aria-hidden></span>
+                <span className="text-sm text-gray-700">{telegramConnected ? 'Telegram подключён' : 'Telegram не подключён'}</span>
+              </div>
+              {telegramConnected && (
+                <button onClick={onOpenTelegram} className="text-sm text-primary-600 hover:underline">Отправить сообщение</button>
+              )}
+            </div>
+          </div>
         </div>
       ) : (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">

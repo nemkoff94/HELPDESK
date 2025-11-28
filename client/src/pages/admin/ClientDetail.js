@@ -23,6 +23,7 @@ const ClientDetail = () => {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('tickets');
   const [telegramConnected, setTelegramConnected] = useState(false);
+  const [showActionsDropdown, setShowActionsDropdown] = useState(false);
 
   // Modal states
   const [showCreateLoginModal, setShowCreateLoginModal] = useState(false);
@@ -344,60 +345,95 @@ const ClientDetail = () => {
     <div className="space-y-6">
       {/* Header with buttons */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-        <button
-          onClick={() => navigate(user?.role === 'admin' ? '/admin/clients' : '/specialist')}
-          className="text-primary-600 hover:text-primary-700 flex items-center w-fit"
-        >
-          ← Назад к списку
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(user?.role === 'admin' ? '/admin/clients' : '/specialist')}
+            className="text-primary-600 hover:text-primary-700 flex items-center w-fit"
+          >
+            ← Назад к списку
+          </button>
+        </div>
+
         {user?.role === 'admin' && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto flex-wrap">
-            <button
-              onClick={handleOpenEditModal}
-              className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 text-sm sm:text-base w-full sm:w-auto"
-            >
-              Редактировать
-            </button>
-            {telegramConnected && (
-              <button
-                onClick={() => setShowTelegramMessageModal(true)}
-                className="bg-blue-400 text-white px-4 py-2 rounded-lg hover:bg-blue-500 text-sm sm:text-base w-full sm:w-auto"
-                title="Отправить сообщение в Telegram"
-              >
-                💬 Telegram
-              </button>
-            )}
-            <button
-              onClick={() => navigate(`/admin/clients/${id}/widgets`)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm sm:text-base w-full sm:w-auto"
-            >
-              Управлять виджетами
-            </button>
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
               onClick={() => navigate(`/admin/tickets/new?clientId=${id}`)}
-              className="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 text-sm sm:text-base w-full sm:w-auto"
+              className="bg-primary-700 text-white px-4 py-2 rounded-lg hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm sm:text-base w-full sm:w-auto flex items-center gap-2"
             >
-              + Создать тикет
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              <span>Создать тикет</span>
             </button>
+
             <button
               onClick={() => navigate(`/admin/invoices/new/${id}`)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm sm:text-base w-full sm:w-auto"
+              className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm sm:text-base w-full sm:w-auto flex items-center gap-2"
             >
-              + Создать счет
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+                <path d="M21 10v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M17 3v4M7 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              <span>Создать счёт</span>
             </button>
-            <button
-              onClick={() => setShowConfirmDeleteClient(true)}
-              className="text-red-600 hover:text-red-700 transition-colors text-lg"
-              title="Удалить клиента"
-            >
-              🗑️
-            </button>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowActionsDropdown(!showActionsDropdown)}
+                className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-2"
+                aria-haspopup="true"
+                aria-expanded={showActionsDropdown}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                  <path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 6v.01M12 12v.01M12 18v.01" />
+                </svg>
+                Действия
+              </button>
+
+              {showActionsDropdown && (
+                <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg z-40">
+                  <button onClick={handleOpenEditModal} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path d="M3 21v-3.75L14.06 6.19a2 2 0 0 1 2.83 0l1.92 1.92a2 2 0 0 1 0 2.83L7.75 22H3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Редактировать
+                  </button>
+                  <button onClick={() => { navigate(`/admin/clients/${id}/widgets`); setShowActionsDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path d="M4 7h4v4H4zM10 7h4v4h-4zM16 7h4v4h-4zM4 13h4v4H4zM10 13h4v4h-4zM16 13h4v4h-4z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Управлять виджетами
+                  </button>
+                  {telegramConnected && (
+                    <button onClick={() => { setShowTelegramMessageModal(true); setShowActionsDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Отправить Telegram
+                    </button>
+                  )}
+                  <button onClick={() => { setShowConfirmDeleteClient(true); setShowActionsDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+                      <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Удалить клиента
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
 
       {/* Client Info */}
-      <ClientInfo client={client} user={user} />
+      <ClientInfo
+        client={client}
+        user={user}
+        ticketsCount={tickets.length}
+        invoicesCount={invoices.length}
+        tasksCount={tasks.length}
+        telegramConnected={telegramConnected}
+      />
 
       {/* Client Access Section */}
       <div className="bg-white rounded-lg shadow-md p-6">
@@ -407,6 +443,8 @@ const ClientDetail = () => {
           onCreateLogin={() => setShowCreateLoginModal(true)}
           onChangePassword={() => setShowChangePasswordModal(true)}
           onGeneratePassword={handleGeneratePassword}
+          telegramConnected={telegramConnected}
+          onOpenTelegram={() => setShowTelegramMessageModal(true)}
         />
       </div>
 
