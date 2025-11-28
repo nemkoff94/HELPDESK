@@ -17,6 +17,25 @@ const initializeDatabase = (db) => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Вложения для тикетов и комментариев
+    db.run(`CREATE TABLE IF NOT EXISTS attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_id INTEGER,
+      comment_id INTEGER,
+      uploader_user_id INTEGER,
+      uploader_client_id INTEGER,
+      filename TEXT NOT NULL,
+      original_name TEXT,
+      mime_type TEXT,
+      size INTEGER,
+      path TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+      FOREIGN KEY (comment_id) REFERENCES ticket_comments(id) ON DELETE CASCADE,
+      FOREIGN KEY (uploader_user_id) REFERENCES users(id),
+      FOREIGN KEY (uploader_client_id) REFERENCES clients(id)
+    )`);
+
     // Клиенты
     db.run(`CREATE TABLE IF NOT EXISTS clients (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -74,6 +74,51 @@ const initializeCronJobs = (db) => {
   });
 
   console.log('Крон-задача проверки доступности сайтов активирована');
+  // Крон-задача для удаления вложений старше 30 дней (ежедневно в 03:00)
+  const attachmentsCleanupCron = cron.schedule('0 3 * * *', async () => {
+    console.log('Запуск задачи очистки старых вложений...');
+
+    db.all(
+      `SELECT * FROM attachments WHERE datetime(created_at) <= datetime('now','-30 days')`,
+      async (err, rows) => {
+        if (err) {
+          console.error('Ошибка при получении устаревших вложений:', err);
+          return;
+        }
+
+        for (const a of rows) {
+          try {
+            if (a.path) {
+              const filePath = path.join(__dirname, a.path.startsWith('/') ? a.path.slice(1) : a.path);
+              fs.unlink(filePath, (err) => {
+                if (err) console.warn('Не удалось удалить файл вложения:', filePath, err);
+              });
+            }
+
+            // Добавляем комментарий в тикет о том, что вложение удалено
+            if (a.ticket_id) {
+              db.run(
+                `INSERT INTO ticket_comments (ticket_id, user_id, client_id, message) VALUES (?, NULL, NULL, ?)`,
+                [a.ticket_id, 'Срок хранения вложения истек'],
+                (err) => {
+                  if (err) console.error('Ошибка при добавлении комментария об удалении вложения:', err);
+                }
+              );
+            }
+
+            // Удаляем запись из таблицы attachments
+            db.run('DELETE FROM attachments WHERE id = ?', [a.id], (err) => {
+              if (err) console.error('Ошибка при удалении записи вложения из БД:', err);
+            });
+          } catch (e) {
+            console.error('Ошибка при обработке вложения для удаления:', e);
+          }
+        }
+      }
+    );
+  });
+
+  console.log('Крон-задача очистки вложений активирована');
   return screenshotCron;
 };
 
