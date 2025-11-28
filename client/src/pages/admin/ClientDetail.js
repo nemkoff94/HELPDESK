@@ -97,14 +97,20 @@ const ClientDetail = () => {
     try {
       const [clientRes, ticketsRes, invoicesRes, loginRes, tasksRes, telegramRes] = await Promise.all([
         api.get(`/clients/${id}`),
-        api.get(`/tickets/client/${id}`),
+        // For admins we need tickets with last_read_at calculated for the current user (admin).
+        // `/tickets/client/:id` returns last_read_at for the client, which causes wrong unread flags for admins.
+        // Fetch all tickets (server will compute last_read_at for current user) and filter by client_id here.
+        api.get('/tickets'),
         api.get(`/invoices/client/${id}`),
         api.get(`/clients/${id}/login`).catch(() => ({ data: null })),
         api.get(`/tasks/client/${id}`).catch(() => ({ data: [] })),
         api.get(`/telegram/client/${id}/status`).catch(() => ({ data: { connected: false } })),
       ]);
       setClient(clientRes.data);
-      setTickets(ticketsRes.data);
+      // If server returned all tickets, filter to this client; otherwise keep as is
+      const allTickets = ticketsRes.data || [];
+      const clientTickets = allTickets.filter((t) => String(t.client_id) === String(id));
+      setTickets(clientTickets);
       setInvoices(invoicesRes.data);
       setClientLogin(loginRes.data);
       setTasks(tasksRes.data || []);

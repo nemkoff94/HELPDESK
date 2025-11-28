@@ -86,7 +86,14 @@ router.get('/', authenticateToken, (req, res) => {
   const userRole = req.user.role;
   const db = req.db;
 
-  // В запрос добавляем данные о последнем комментарии и кто его написал, а также время последнего прочтения конкретным пользователем/клиентом
+  // В запрос добавляем данные о последнем комментарии и кто его написал,
+  // а также время последнего прочтения конкретным пользователем/клиентом.
+  // Явно проверяем нужное поле в `ticket_reads` (user_id для staff, client_id для клиента),
+  // чтобы избежать двусмысленных OR-условий и случайной выборки чужих отметок о прочтении.
+  const lastReadSubquery = userRole === 'client'
+    ? `(SELECT tr.last_read_at FROM ticket_reads tr WHERE tr.ticket_id = t.id AND tr.client_id = ? LIMIT 1)`
+    : `(SELECT tr.last_read_at FROM ticket_reads tr WHERE tr.ticket_id = t.id AND tr.user_id = ? LIMIT 1)`;
+
   let baseQuery = `
     SELECT
       t.*,
@@ -94,14 +101,12 @@ router.get('/', authenticateToken, (req, res) => {
       (SELECT MAX(created_at) FROM ticket_comments tc WHERE tc.ticket_id = t.id) AS last_comment_at,
       (SELECT tc.user_id FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) AS last_comment_user_id,
       (SELECT tc.client_id FROM ticket_comments tc WHERE tc.ticket_id = t.id ORDER BY tc.created_at DESC LIMIT 1) AS last_comment_client_id,
-      (SELECT tr.last_read_at FROM ticket_reads tr WHERE tr.ticket_id = t.id AND (
-        (tr.user_id IS NOT NULL AND tr.user_id = ?) OR (tr.client_id IS NOT NULL AND tr.client_id = ?)
-      ) LIMIT 1) AS last_read_at
+      ${lastReadSubquery} AS last_read_at
     FROM tickets t
     JOIN clients c ON t.client_id = c.id
   `;
 
-  const params = [req.user.id, req.user.id];
+  const params = [req.user.id];
 
   if (userRole === 'client') {
     baseQuery += ` WHERE t.client_id = ?`;
@@ -254,10 +259,9 @@ router.get('/:id', authenticateToken, (req, res) => {
 
     const upsertRead = () => {
       // Проверим есть ли запись
-      db.get(
-        'SELECT * FROM ticket_reads WHERE ticket_id = ? AND ((user_id IS NOT NULL AND user_id = ?) OR (client_id IS NOT NULL AND client_id = ?))',
-        [id, readerUserId, readerClientId],
-        (err, row) => {
+      // Подбираем существующую запись только по соответствующему полю (user_id для staff, client_id для клиента)
+      if (readerUserId) {
+        db.get('SELECT * FROM ticket_reads WHERE ticket_id = ? AND user_id = ?', [id, readerUserId], (err, row) => {
           if (err) {
             console.error('Ошибка при проверке ticket_reads:', err);
           }
@@ -266,12 +270,27 @@ router.get('/:id', authenticateToken, (req, res) => {
               if (err) console.error('Ошибка при обновлении ticket_reads:', err);
             });
           } else {
-            db.run('INSERT INTO ticket_reads (ticket_id, user_id, client_id, last_read_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)', [id, readerUserId, readerClientId], (err) => {
+            db.run('INSERT INTO ticket_reads (ticket_id, user_id, client_id, last_read_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)', [id, readerUserId, null], (err) => {
               if (err) console.error('Ошибка при вставке ticket_reads:', err);
             });
           }
-        }
-      );
+        });
+      } else {
+        db.get('SELECT * FROM ticket_reads WHERE ticket_id = ? AND client_id = ?', [id, readerClientId], (err, row) => {
+          if (err) {
+            console.error('Ошибка при проверке ticket_reads:', err);
+          }
+          if (row) {
+            db.run('UPDATE ticket_reads SET last_read_at = CURRENT_TIMESTAMP WHERE id = ?', [row.id], (err) => {
+              if (err) console.error('Ошибка при обновлении ticket_reads:', err);
+            });
+          } else {
+            db.run('INSERT INTO ticket_reads (ticket_id, user_id, client_id, last_read_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)', [id, null, readerClientId], (err) => {
+              if (err) console.error('Ошибка при вставке ticket_reads:', err);
+            });
+          }
+        });
+      }
     };
 
       // Получим вложения привязанные к самому тикету (не к комментариям)

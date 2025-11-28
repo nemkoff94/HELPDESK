@@ -214,57 +214,41 @@ const SpecialistTicketDetail = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-md p-6">
-        <h2 className="text-xl font-bold text-gray-800 mb-4">Комментарии</h2>
+        <h2 className="text-xl font-bold text-gray-800 mb-4">Чат по тикету</h2>
 
         <div className="space-y-4 mb-6 max-h-96 overflow-y-auto">
-          {comments.map((comment) => (
-            <div
-              key={comment.id}
-              className={`p-4 rounded-lg ${
-                comment.user_id
-                  ? 'bg-primary-50 border-l-4 border-primary-500'
-                  : 'bg-gray-50 border-l-4 border-gray-400'
-              }`}
-            >
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <p className="font-semibold text-gray-800">
-                    {comment.user_name || comment.client_name || 'Клиент'}
-                  </p>
-                  {comment.user_role && (
-                    <p className="text-xs text-gray-500">
-                      {comment.user_role === 'admin'
-                        ? 'Администратор'
-                        : 'Специалист'}
-                    </p>
-                  )}
-                </div>
-                  <p className="text-xs text-gray-500">
-                  {formatDate(comment.created_at_utc || comment.created_at)}
-                </p>
-              </div>
-              <p className="text-gray-700 whitespace-pre-wrap">
-                {comment.message}
-              </p>
-              {comment.attachments && comment.attachments.length > 0 && (
-                <div className="mt-2">
-                  <h4 className="text-sm font-medium">Вложения:</h4>
-                  <ul className="text-sm">
-                    {comment.attachments.map((att) => {
+          {comments.map((comment) => {
+            const isOwn = (user?.role === 'client') ? (comment.client_id === user.id) : (comment.user_id === user.id);
+            const authorName = comment.user_name || comment.client_name || (isOwn ? 'Вы' : 'Клиент');
+            return (
+              <div key={comment.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                <div className={`px-4 py-2 rounded-lg max-w-[75%] break-words ${isOwn ? 'bg-primary-600 text-white rounded-br-none' : 'bg-gray-100 text-gray-800 rounded-bl-none'}`}>
+                  <div className={`text-xs ${isOwn ? 'text-right text-white/80' : 'text-left text-gray-500'} mb-1 flex items-center justify-between gap-2`}>
+                    <span className="font-semibold">{authorName}</span>
+                    <span className="text-xs">{formatDate(comment.created_at_utc || comment.created_at)}</span>
+                  </div>
+                  <div className="whitespace-pre-wrap">{comment.message}</div>
+                  {comment.attachments && comment.attachments.length > 0 && (
+                    <div className={`mt-2 ${isOwn ? 'text-white/90' : ''}`}>
+                      {comment.attachments.map((att) => {
                         const fileUrl = att.path && (att.path.startsWith('http') ? att.path : `${api.defaults.baseURL.replace(/\/api$/, '')}${att.path}`);
                         return (
-                        <li key={att.id} className="flex items-center justify-between">
-                          <a href={fileUrl} target="_blank" rel="noreferrer" className="text-primary-600 hover:underline">
-                            {att.original_name ? transliterateForDisplay(att.original_name) : att.filename}
-                          </a>
-                          <div className="text-xs text-gray-500">{formatDate(att.created_at_utc || att.created_at)}</div>
-                        </li>
-                      )})}
-                  </ul>
+                          <div key={att.id} className="mt-1">
+                            <a href={fileUrl} target="_blank" rel="noreferrer" className={`${isOwn ? 'underline text-white' : 'text-primary-600 hover:underline'}`}>
+                              {att.original_name ? transliterateForDisplay(att.original_name) : att.filename}
+                            </a>
+                            {user?.role === 'admin' && isOwn && (
+                              <button onClick={() => handleDeleteAttachment(att.id)} className="ml-3 text-sm text-red-200">Удалить</button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            );
+          })}
         </div>
 
         <form onSubmit={handleSubmitComment} className="space-y-3">
