@@ -1,4 +1,5 @@
 import React from 'react';
+import Icon from '../../components/Icon';
 
 const ClientInfo = ({ client, user, onEdit, onDelete, telegramConnected, onTelegramMessage, ticketsCount = 0, invoicesCount = 0, tasksCount = 0 }) => {
   const getStatusColor = (status) => {
@@ -45,11 +46,7 @@ const ClientInfo = ({ client, user, onEdit, onDelete, telegramConnected, onTeleg
               {client.url && (
                 <>
                   <a href={client.url} target="_blank" rel="noopener noreferrer" className="text-primary-600 hover:underline flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M18 13v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-                      <path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M15 3h6v6" />
-                      <path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M10 14L21 3" />
-                    </svg>
+                    <Icon name="ExternalLink" className="h-3.5 w-3.5 text-current" />
                     <span className="truncate max-w-xs">{client.url}</span>
                   </a>
                   <button
@@ -58,7 +55,7 @@ const ClientInfo = ({ client, user, onEdit, onDelete, telegramConnected, onTeleg
                     title="Скопировать URL"
                     aria-label="Скопировать URL"
                   >
-                    📋
+                    <Icon name="Clipboard" className="h-4 w-4" />
                   </button>
                 </>
               )}
@@ -143,13 +140,13 @@ function copyToClipboard(text) {
 function getStatusIcon(status) {
   switch (status) {
     case 'in_development':
-      return '🛠️';
+      return <Icon name="Wrench" className="h-4 w-4" />;
     case 'working':
-      return '✅';
+      return <Icon name="Check" className="h-4 w-4" />;
     case 'needs_attention':
-      return '⚠️';
+      return <Icon name="Exclamation" className="h-4 w-4" />;
     default:
-      return 'ℹ️';
+      return <Icon name="Info" className="h-4 w-4" />;
   }
 }
 

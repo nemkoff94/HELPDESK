@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api';
 import { useAuth } from '../../hooks/useAuth';
 import ClientInfo from '../../components/ClientDetail/ClientInfo';
 import ClientAccess from '../../components/ClientDetail/ClientAccess';
+import Icon from '../../components/Icon';
 import ClientModals from '../../components/ClientDetail/ClientModals';
 import TicketsTab from '../../components/ClientDetail/TicketsTab';
 import InvoicesTab from '../../components/ClientDetail/InvoicesTab';
@@ -24,6 +25,7 @@ const ClientDetail = () => {
   const [activeTab, setActiveTab] = useState('tickets');
   const [telegramConnected, setTelegramConnected] = useState(false);
   const [showActionsDropdown, setShowActionsDropdown] = useState(false);
+  const actionsRef = useRef(null);
 
   // Modal states
   const [showCreateLoginModal, setShowCreateLoginModal] = useState(false);
@@ -67,6 +69,29 @@ const ClientDetail = () => {
     fetchData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Close dropdown on click-away or Esc
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (actionsRef.current && !actionsRef.current.contains(e.target)) {
+        setShowActionsDropdown(false);
+      }
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Escape') setShowActionsDropdown(false);
+    }
+
+    if (showActionsDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showActionsDropdown]);
 
   const fetchData = async () => {
     try {
@@ -360,9 +385,7 @@ const ClientDetail = () => {
               onClick={() => navigate(`/admin/tickets/new?clientId=${id}`)}
               className="bg-primary-700 text-white px-4 py-2 rounded-lg hover:bg-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-300 text-sm sm:text-base w-full sm:w-auto flex items-center gap-2"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+              <Icon name="Plus" className="h-4 w-4" />
               <span>Создать тикет</span>
             </button>
 
@@ -370,52 +393,39 @@ const ClientDetail = () => {
               onClick={() => navigate(`/admin/invoices/new/${id}`)}
               className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm sm:text-base w-full sm:w-auto flex items-center gap-2"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
-                <path d="M21 10v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h7" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M17 3v4M7 14h6" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-              </svg>
+              <Icon name="Invoice" className="h-4 w-4" />
               <span>Создать счёт</span>
             </button>
 
-            <div className="relative">
+            <div className="relative" ref={actionsRef}>
               <button
                 onClick={() => setShowActionsDropdown(!showActionsDropdown)}
                 className="bg-gray-100 text-gray-800 px-3 py-2 rounded-lg hover:bg-gray-200 text-sm flex items-center gap-2"
                 aria-haspopup="true"
                 aria-expanded={showActionsDropdown}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                  <path stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" d="M12 6v.01M12 12v.01M12 18v.01" />
-                </svg>
+                <Icon name="DotsVertical" className="h-4 w-4" />
                 Действия
               </button>
 
               {showActionsDropdown && (
                 <div className="absolute right-0 mt-2 w-56 bg-white border rounded shadow-lg z-40">
                   <button onClick={handleOpenEditModal} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path d="M3 21v-3.75L14.06 6.19a2 2 0 0 1 2.83 0l1.92 1.92a2 2 0 0 1 0 2.83L7.75 22H3z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <Icon name="Edit" className="h-4 w-4" />
                     Редактировать
                   </button>
                   <button onClick={() => { navigate(`/admin/clients/${id}/widgets`); setShowActionsDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path d="M4 7h4v4H4zM10 7h4v4h-4zM16 7h4v4h-4zM4 13h4v4H4zM10 13h4v4h-4zM16 13h4v4h-4z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <Icon name="Widgets" className="h-4 w-4" />
                     Управлять виджетами
                   </button>
                   {telegramConnected && (
                     <button onClick={() => { setShowTelegramMessageModal(true); setShowActionsDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 flex items-center gap-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
+                      <Icon name="Telegram" className="h-4 w-4" />
                       Отправить Telegram
                     </button>
                   )}
                   <button onClick={() => { setShowConfirmDeleteClient(true); setShowActionsDropdown(false); }} className="w-full text-left px-4 py-2 hover:bg-gray-50 text-red-600 flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
-                      <path d="M3 6h18M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6M10 6V4a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v2" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
+                    <Icon name="Trash" className="h-4 w-4" />
                     Удалить клиента
                   </button>
                 </div>
