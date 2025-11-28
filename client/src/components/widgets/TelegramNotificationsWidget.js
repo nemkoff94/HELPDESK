@@ -13,27 +13,34 @@ const TelegramNotificationsWidget = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetchStatus();
-  }, []);
+    let mounted = true;
 
-  const fetchStatus = async () => {
-    try {
-      setLoading(true);
-      const endpoint = user?.role === 'client' 
-        ? '/telegram/client/status'
-        : '/telegram/user/status';
-      
-      const response = await api.get(endpoint);
-      setConnected(response.data.connected);
-      setUsername(response.data.username || '');
-      setError('');
-    } catch (error) {
-      console.error('Ошибка при загрузке статуса:', error);
-      setError('Ошибка при загрузке статуса');
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchStatus = async () => {
+      try {
+        setLoading(true);
+        const endpoint = user?.role === 'client'
+          ? '/telegram/client/status'
+          : '/telegram/user/status';
+
+        const response = await api.get(endpoint);
+        if (!mounted) return;
+        setConnected(response.data.connected);
+        setUsername(response.data.username || '');
+        setError('');
+      } catch (error) {
+        console.error('Ошибка при загрузке статуса:', error);
+        if (mounted) setError('Ошибка при загрузке статуса');
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    fetchStatus();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   const generateLink = async () => {
     try {

@@ -5,19 +5,25 @@ const AdCampaignWidget = ({ clientId, api }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchWidget();
-  }, [clientId]);
+    let mounted = true;
 
-  const fetchWidget = async () => {
-    try {
-      const response = await api.get(`/widgets/ad-campaign/${clientId}`);
-      setWidget(response.data);
-    } catch (error) {
-      console.error('Ошибка при загрузке виджета:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchWidget = async () => {
+      try {
+        const response = await api.get(`/widgets/ad-campaign/${clientId}`);
+        if (mounted) setWidget(response.data);
+      } catch (error) {
+        console.error('Ошибка при загрузке виджета:', error);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    };
+
+    if (clientId) fetchWidget();
+
+    return () => {
+      mounted = false;
+    };
+  }, [clientId, api]);
 
   if (loading) {
     return (

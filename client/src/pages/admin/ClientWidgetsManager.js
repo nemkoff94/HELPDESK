@@ -10,7 +10,6 @@ const ClientWidgetsManager = () => {
   const [activeTab, setActiveTab] = useState('ad-campaign');
 
   // Состояния для виджета рекламных кампаний
-  const [adCampaign, setAdCampaign] = useState(null);
   const [adCampaignForm, setAdCampaignForm] = useState({
     enabled: false,
     monthly_budget: '',
@@ -69,7 +68,6 @@ const ClientWidgetsManager = () => {
       ]);
 
       setClient(clientRes.data);
-      setAdCampaign(adRes.data);
       setRenewalCalendar(renewalRes.data);
       setRecommendations(recRes.data);
       setSiteAvailability(siteRes.data);
