@@ -415,7 +415,7 @@ try {
 - ⚠️ TODO: Add request logging
 - ⚠️ TODO: Add audit trail for admin actions
 
----
+--- 
 
 ## Deployment Architecture
 
