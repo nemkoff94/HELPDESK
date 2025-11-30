@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import Footer from './Footer';
+import CookieBanner from './CookieBanner';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
@@ -121,6 +122,7 @@ const Layout = ({ children }) => {
         {children}
       </main>
       <Footer />
+      <CookieBanner />
     </div>
   );
 };
