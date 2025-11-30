@@ -245,6 +245,11 @@ const Dashboard = () => {
                       <p className="text-sm text-gray-600">
                         {invoice.amount.toLocaleString('ru-RU')} ₽
                       </p>
+                      {invoice.comment && (
+                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                          {invoice.comment}
+                        </p>
+                      )}
                     </div>
                     <div className="flex items-center gap-3">
                       <span
