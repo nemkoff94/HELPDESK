@@ -1,3 +1,7 @@
 *.db
 node_modules/
 frontend/build/
+
+# Environment files
+.env
+server/.env

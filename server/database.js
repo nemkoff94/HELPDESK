@@ -249,6 +249,20 @@ const initializeDatabase = (db) => {
       FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
     )`);
 
+    // Email интеграция для клиентов (верификация и предпочтения уведомлений)
+    db.run(`CREATE TABLE IF NOT EXISTS client_email (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id INTEGER NOT NULL UNIQUE,
+      email TEXT UNIQUE,
+      verified BOOLEAN DEFAULT 0,
+      verification_code TEXT,
+      enabled BOOLEAN DEFAULT 0,
+      preferences TEXT DEFAULT '{"new_invoice":{"email":true,"telegram":false},"new_ticket":{"email":true,"telegram":false},"ticket_message":{"email":true,"telegram":false},"ticket_status":{"email":true,"telegram":false},"new_recommendation":{"email":true,"telegram":false}}',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE CASCADE
+    )`);
+
     // Telegram интеграция для администраторов
     db.run(`CREATE TABLE IF NOT EXISTS user_telegram (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

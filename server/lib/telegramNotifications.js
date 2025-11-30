@@ -1,4 +1,6 @@
 const { sendClientNotification, sendAdminNotification } = require('./telegramBot');
+const { sendClientEmail } = require('./emailSender');
+const templates = require('./emailTemplates');
 
 /**
  * Форматирует и отправляет уведомление о новом тикете клиенту
@@ -9,6 +11,14 @@ const notifyClientNewTicket = async (db, clientId, ticketId, ticketTitle) => {
     await sendClientNotification(db, clientId, message);
   } catch (e) {
     console.error('Telegram send error (new ticket):', e);
+  }
+
+  // Email
+  try {
+    const tpl = templates.newTicketTemplate({ ticketTitle, ticketId });
+    await sendClientEmail(db, clientId, 'new_ticket', tpl.subject, tpl.text, tpl.html, { ticketTitle, ticketId });
+  } catch (e) {
+    console.error('Email send error (new ticket):', e);
   }
 
   // Добавляем внутриплатформенное уведомление
@@ -32,6 +42,14 @@ const notifyClientTicketMessage = async (db, clientId, ticketId, ticketTitle, se
     await sendClientNotification(db, clientId, text);
   } catch (e) {
     console.error('Telegram send error (ticket message):', e);
+  }
+
+  // Email
+  try {
+    const tpl = templates.ticketMessageTemplate({ ticketTitle, ticketId, senderName, message });
+    await sendClientEmail(db, clientId, 'ticket_message', tpl.subject, tpl.text, tpl.html, { ticketTitle, ticketId, senderName, message });
+  } catch (e) {
+    console.error('Email send error (ticket message):', e);
   }
 
   try {
@@ -62,6 +80,14 @@ const notifyClientTicketStatusChange = async (db, clientId, ticketId, ticketTitl
     console.error('Telegram send error (ticket status):', e);
   }
 
+  // Email
+  try {
+    const tpl = templates.ticketStatusTemplate({ ticketTitle, ticketId, statusText });
+    await sendClientEmail(db, clientId, 'ticket_status', tpl.subject, tpl.text, tpl.html, { ticketTitle, ticketId, statusText });
+  } catch (e) {
+    console.error('Email send error (ticket status):', e);
+  }
+
   try {
     db.run(
       `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -84,6 +110,14 @@ const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => 
     console.error('Telegram send error (new invoice):', e);
   }
 
+  // Email
+  try {
+    const tpl = templates.newInvoiceTemplate({ invoiceId, amount, date });
+    await sendClientEmail(db, clientId, 'new_invoice', tpl.subject, tpl.text, tpl.html, { invoiceId, amount, date });
+  } catch (e) {
+    console.error('Email send error (new invoice):', e);
+  }
+
   try {
     db.run(
       `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
@@ -104,6 +138,14 @@ const notifyClientNewRecommendation = async (db, clientId, recommendationId, tit
     await sendClientNotification(db, clientId, message);
   } catch (e) {
     console.error('Telegram send error (new recommendation):', e);
+  }
+
+  // Email
+  try {
+    const tpl = templates.newRecommendationTemplate({ title, description, recommendationId });
+    await sendClientEmail(db, clientId, 'new_recommendation', tpl.subject, tpl.text, tpl.html, { title, description, recommendationId });
+  } catch (e) {
+    console.error('Email send error (new recommendation):', e);
   }
 
   try {
