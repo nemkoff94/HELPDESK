@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../api';
 import formatDate from '../../utils/formatDate';
+import TelegramNotificationsWidget from '../../components/widgets/TelegramNotificationsWidget';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -198,6 +199,9 @@ const Profile = () => {
           </div>
         )}
       </div>
+
+      {/* Telegram Notifications Widget (after Email settings) */}
+      <TelegramNotificationsWidget />
 
       {/* Email Notifications - Preferences */}
       <div className="bg-white rounded-lg shadow-md p-6">
