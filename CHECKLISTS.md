@@ -12,7 +12,7 @@
 - [ ] Прочитал PROJECT_INDEX.md
 - [ ] Понял структуру: Backend (Node.js) + Frontend (React)
 - [ ] Знаю основные сущности: Client, Ticket, Invoice, Task
-- [ ] Знаю три роли: admin, specialist, client
+- [ ] Знаю три роли: admin, specialist, client 
 
 ### Часть 2: Локальная разработка (10 мин)
 - [ ] Клонировал репозиторий
