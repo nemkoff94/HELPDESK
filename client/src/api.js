@@ -34,7 +34,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401 || error.response?.status === 403) {
+    const status = error.response?.status;
+    const reqUrl = error.config?.url || '';
+    // Не выполняем автоматический редирект на /login для самих auth-запросов
+    const skipAuthRedirect = ['/auth/login', '/auth/client-login', '/auth/me'].some((u) => reqUrl.includes(u));
+
+    if ((status === 401 || status === 403) && !skipAuthRedirect) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

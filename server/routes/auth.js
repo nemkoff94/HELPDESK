@@ -81,12 +81,28 @@ router.post('/auth/login', async (req, res, next) => {
     }
 
     if (!user) {
-      return res.status(401).json({ error: 'Неверный email или пароль' });
+      // Возможно, это клиент, который пытается войти через форму сотрудника
+      db.get('SELECT * FROM client_logins WHERE email = ?', [email], (cErr, clientLogin) => {
+        if (cErr) {
+          return res.status(500).json({ error: 'Ошибка сервера' });
+        }
+
+        if (clientLogin) {
+          return res.status(401).json({ error: 'Клиент пытается войти как сотрудник' });
+        }
+
+        return res.status(401).json({ error: 'Не найден пользователь по логину' });
+      });
+      return;
+    }
+
+    if (user.role === 'client') {
+      return res.status(401).json({ error: 'Клиент пытается войти как сотрудник' });
     }
 
     const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
-      return res.status(401).json({ error: 'Неверный email или пароль' });
+      return res.status(401).json({ error: 'Введен неверный пароль пользователя' });
     }
 
     const token = jwt.sign(
@@ -159,12 +175,24 @@ router.post('/auth/client-login', async (req, res, next) => {
       }
 
       if (!clientLogin) {
-        return res.status(401).json({ error: 'Неверный email или пароль' });
+        // Возможно, это сотрудник, который пытается зайти через форму клиента
+        db.get('SELECT * FROM users WHERE email = ?', [email], (uErr, userRow) => {
+          if (uErr) {
+            return res.status(500).json({ error: 'Ошибка сервера' });
+          }
+
+          if (userRow) {
+            return res.status(401).json({ error: 'Сотрудник пытается войти как клиент' });
+          }
+
+          return res.status(401).json({ error: 'Не найден пользователь по логину' });
+        });
+        return;
       }
 
       const validPassword = await bcrypt.compare(password, clientLogin.password);
       if (!validPassword) {
-        return res.status(401).json({ error: 'Неверный email или пароль' });
+        return res.status(401).json({ error: 'Введен неверный пароль пользователя' });
       }
 
       const token = jwt.sign(

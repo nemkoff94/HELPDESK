@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import Notification from '../components/Notification';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -129,9 +130,11 @@ const Login = () => {
           )}
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {error}
-            </div>
+            <Notification
+              type="error"
+              message={error}
+              onClose={() => setError('')}
+            />
           )}
 
           <button
