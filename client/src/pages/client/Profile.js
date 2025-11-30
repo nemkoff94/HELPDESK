@@ -12,6 +12,7 @@ const Profile = () => {
   const [emailInput, setEmailInput] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [savingPrefs, setSavingPrefs] = useState(false);
+  const [showUnbindConfirm, setShowUnbindConfirm] = useState(false);
 
   useEffect(() => {
     const fetchClient = async () => {
@@ -144,6 +145,35 @@ const Profile = () => {
                 }
               }} className="inline-flex items-center px-3 py-2 bg-primary-600 text-white rounded text-sm">Отправить код</button>
             </div>
+            {emailSettings && emailSettings.verified && (
+              <div className="mt-3">
+                <div className="text-xs text-gray-500">Привязанный email</div>
+                <div className="flex items-center justify-between mt-1">
+                  <div className="text-sm text-gray-800">{emailSettings.email}</div>
+                  <div>
+                    {!showUnbindConfirm ? (
+                      <button onClick={() => setShowUnbindConfirm(true)} className="px-3 py-1 bg-red-50 text-red-600 border border-red-100 rounded text-sm">Отвязать email</button>
+                    ) : (
+                      <div className="flex items-center space-x-2">
+                        <button onClick={async () => {
+                          try {
+                            await api.post('/notifications/email/unbind');
+                            setEmailSettings(s => ({ ...s, email: '', verified: false, enabled: false }));
+                            setEmailInput('');
+                            setShowUnbindConfirm(false);
+                            alert('Email отвязан');
+                          } catch (e) {
+                            setShowUnbindConfirm(false);
+                            alert('Не удалось отвязать email');
+                          }
+                        }} className="px-3 py-1 bg-red-600 text-white rounded text-sm">Подтвердить</button>
+                        <button onClick={() => setShowUnbindConfirm(false)} className="px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm">Отмена</button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
             <div className="text-xs text-gray-500 mt-2">Статус: {emailSettings.verified ? <span className="text-green-600">Подтверждён</span> : <span className="text-yellow-600">Не подтверждён</span>}</div>
             {!emailSettings.verified && (
               <div className="mt-2 flex items-center space-x-2">
@@ -169,7 +199,7 @@ const Profile = () => {
                 <div key={ev} className="flex items-center justify-between bg-gray-50 p-3 rounded">
                   <div className="text-sm text-gray-800">{ev === 'new_invoice' ? 'Новый счет' : ev === 'new_ticket' ? 'Новый тикет' : ev === 'ticket_message' ? 'Новый ответ в тикете' : ev === 'ticket_status' ? 'Изменение статуса тикета' : 'Новая рекомендация'}</div>
                   <div className="flex items-center space-x-3">
-                    <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].email)} onChange={(e) => {
+                    <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].email)} disabled={!emailSettings.verified} onChange={(e) => {
                       const p = { ...(emailSettings.preferences || {}) };
                       p[ev] = p[ev] || { email: false, telegram: false };
                       p[ev].email = e.target.checked;

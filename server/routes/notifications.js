@@ -147,6 +147,23 @@ router.post('/email/verify', authenticateToken, (req, res) => {
   });
 });
 
+// Отвязать email (удалить привязку)
+router.post('/email/unbind', authenticateToken, (req, res) => {
+  if (req.user.role !== 'client') return res.status(403).json({ error: 'Недостаточно прав' });
+  const db = req.db;
+  const clientId = req.user.id;
+
+  db.get('SELECT id FROM client_email WHERE client_id = ?', [clientId], (err, row) => {
+    if (err) return res.status(500).json({ error: 'Ошибка сервера' });
+    if (!row) return res.status(404).json({ error: 'Email не найден' });
+
+    db.run('UPDATE client_email SET email = NULL, verified = 0, verification_code = NULL, enabled = 0, updated_at = CURRENT_TIMESTAMP WHERE client_id = ?', [clientId], function(uErr) {
+      if (uErr) return res.status(500).json({ error: 'Ошибка при отвязке email' });
+      res.json({ message: 'Email успешно отвязан' });
+    });
+  });
+});
+
 // Обновить предпочтения уведомлений (preferences как объект)
 router.put('/preferences', authenticateToken, (req, res) => {
   if (req.user.role !== 'client') return res.status(403).json({ error: 'Недостаточно прав' });
