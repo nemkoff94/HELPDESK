@@ -22,6 +22,7 @@ const Layout = ({ children }) => {
   const searchTimerRef = useRef();
   const profileRef = useRef();
   const notificationsRef = useRef();
+  const mobileNotificationsRef = useRef();
 
   const formatServerDateToLocal = (dateStr) => {
     if (!dateStr) return '';
@@ -71,7 +72,11 @@ const Layout = ({ children }) => {
   // Close notifications dropdown when clicking outside
   useEffect(() => {
     const onDoc = (e) => {
-      if (notificationsRef.current && !notificationsRef.current.contains(e.target)) {
+      const notifsEl = notificationsRef.current;
+      const mobileNotifsEl = mobileNotificationsRef.current;
+      const clickedInsideDesktop = notifsEl && notifsEl.contains(e.target);
+      const clickedInsideMobile = mobileNotifsEl && mobileNotifsEl.contains(e.target);
+      if (!clickedInsideDesktop && !clickedInsideMobile) {
         setNotificationsOpen(false);
       }
     };
@@ -127,11 +132,11 @@ const Layout = ({ children }) => {
     <div className="min-h-screen flex flex-col w-full bg-gray-50">
       <header className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
+          <div className="hidden md:flex justify-between items-center h-16">
             <div className="flex items-center gap-4">
               <Link to="/" className="flex items-center gap-3">
-                <div className="w-9 h-9 bg-primary-600 rounded-lg flex items-center justify-center text-white font-bold">O</div>
-                <div className="hidden sm:block">
+                <div className="hidden sm:flex w-9 h-9 bg-primary-600 rounded-lg items-center justify-center text-white font-bold">O</div>
+                <div className="block">
                   <div className="text-lg font-semibold text-gray-900">Обсидиан</div>
                 </div>
               </Link>
@@ -334,31 +339,107 @@ const Layout = ({ children }) => {
             </div>
           </div>
 
-          {/* Mobile navigation */}
-          <div className="md:hidden">
-            <div className="flex items-center justify-between py-2">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="p-2 rounded-md text-gray-600 hover:bg-gray-100">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-                <div className="text-sm text-gray-700">{user.name}</div>
-              </div>
-            </div>
+          {/* Mobile navigation - compact single-line header with burger+username on right */}
+          <div className="flex md:hidden items-center justify-between h-12 w-full">
+            <div className="text-lg font-semibold text-gray-900">Обсидиан</div>
 
-            {mobileMenuOpen && (
-              <div className="pb-3 space-y-1">
+            <div className="flex items-center gap-2">
+              <div className="relative" ref={mobileNotificationsRef}>
+                <button
+                  title="Оповещения"
+                  onClick={async () => {
+                    setNotificationsOpen(!notificationsOpen);
+                    if (!notificationsOpen) {
+                      try {
+                        const res = await api.get('/notifications');
+                        setNotifications(res.data || []);
+                        setUnreadCount((res.data || []).filter(n => n.read === 0).length);
+                      } catch (e) {}
+                    }
+                  }}
+                  className="p-2 rounded-md text-gray-600 hover:bg-gray-100 relative"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h11z" />
+                  </svg>
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 rounded-full text-xs font-semibold bg-red-600 text-white">{unreadCount}</span>
+                  )}
+                </button>
+
+                {notificationsOpen && (
+                  <div className="origin-top-right absolute right-4 top-12 mt-2 w-80 max-h-96 overflow-auto rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-40">
+                    <div className="py-2">
+                      <div className="px-3 pb-2 flex items-center justify-between">
+                        <strong>Оповещения</strong>
+                        <button className="text-xs text-gray-500" onClick={async () => {
+                          try { await api.put('/notifications/read-all'); setNotifications([]); setUnreadCount(0); } catch (e) {}
+                        }}>Отметить все</button>
+                      </div>
+                      {notifications.length === 0 && (
+                        <div className="px-4 py-6 text-center text-sm text-gray-500">Нет новых уведомлений</div>
+                      )}
+                      {notifications.map((n) => (
+                        <div key={n.id} onClick={async () => {
+                          try {
+                            await api.put(`/notifications/${n.id}/read`);
+                          } catch (e) {}
+                          // навигация по типу (role-aware)
+                          if (n.reference_type === 'ticket' && n.reference_id) {
+                            if (user && user.role === 'client') {
+                              navigate(`/client/tickets/${n.reference_id}`);
+                            } else {
+                              navigate(`/admin/tickets/${n.reference_id}`);
+                            }
+                          } else if (n.reference_type === 'invoice' && n.reference_id) {
+                            navigate(`/client/invoices`);
+                          } else if (n.reference_type === 'recommendation' && n.reference_id) {
+                            navigate(`/client`);
+                          } else {
+                            // fallback
+                            navigate(`/${user.role}`);
+                          }
+                          // визуально пометить локально
+                          setNotifications((prev) => prev.map(p => p.id === n.id ? { ...p, read: 1 } : p));
+                          setUnreadCount((prev) => Math.max(0, prev - (n.read === 0 ? 1 : 0)));
+                          setNotificationsOpen(false);
+                        }} className={`px-4 py-3 hover:bg-gray-50 cursor-pointer ${n.read ? 'opacity-80' : 'bg-white'}`}>
+                          <div className="flex justify-between">
+                            <div className="text-sm text-gray-800">{n.title || n.type}</div>
+                            <div className="text-xs text-gray-400">{formatServerDateToLocal(n.created_at)}</div>
+                          </div>
+                          {n.message && <div className="text-xs text-gray-600 mt-1 line-clamp-2">{n.message}</div>}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="flex items-center gap-2 p-1 rounded-md hover:bg-gray-100">
+                <span className="text-sm font-medium text-gray-700">{user.name}</span>
+                <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {mobileMenuOpen && (
+            <div className="absolute left-2 right-2 top-12 bg-white rounded-md shadow-lg p-3 z-40">
+              <div className="space-y-1">
                 {navItems.map((item) => (
-                  <Link key={item.path} to={item.path} onClick={() => setMobileMenuOpen(false)} className={`block px-4 py-2 rounded-md text-sm ${location.pathname.startsWith(item.path) ? 'bg-gray-100 text-gray-900' : 'text-gray-600 hover:bg-gray-50'}`}>
+                  <Link key={item.path} to={item.path} onClick={() => setMobileMenuOpen(false)} className={`block px-3 py-2 rounded-md text-sm ${location.pathname.startsWith(item.path) ? 'bg-gray-100 text-gray-900' : 'text-gray-700 hover:bg-gray-50'}`}>
                     {item.label}
                   </Link>
                 ))}
-                <Link to={`/${user.role}/profile`} className="block px-4 py-2 text-sm text-gray-600">Профиль</Link>
-                <button onClick={handleLogout} className="w-full text-left px-4 py-2 text-sm text-gray-600">Выйти</button>
               </div>
-            )}
-          </div>
+              <div className="border-t mt-3 pt-3">
+                <Link to={`/${user.role}/profile`} onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-gray-700">Профиль</Link>
+                <button onClick={() => { setMobileMenuOpen(false); handleLogout(); }} className="w-full text-left px-3 py-2 text-sm text-gray-700">Выйти</button>
+              </div>
+            </div>
+          )}
         </div>
       </header>
 
