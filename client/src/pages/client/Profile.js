@@ -123,80 +123,79 @@ const Profile = () => {
           <div className="text-xs text-gray-500">Обновлён</div>
           <div className="text-sm text-gray-800">{client.updated_at ? formatDate(client.updated_at) : '—'}</div>
         </div>
-        {/* Email notifications settings */}
-        <div className="md:col-span-2">
-          <div className="border-t pt-6">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Уведомления по Email</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-gray-500">Email для уведомлений</div>
-                <div className="flex items-center space-x-2 mt-1">
-                  <input value={emailInput} onChange={(e) => setEmailInput(e.target.value)} className="border rounded px-3 py-2 text-sm w-full" placeholder="you@example.com" />
-                  <button onClick={async () => {
-                    if (!emailInput) return;
-                    try {
-                      await api.post('/notifications/email/request', { email: emailInput });
-                      setEmailSettings(s => ({ ...s, email: emailInput, verified: false, enabled: true }));
-                      alert('Код подтверждения отправлен на указанный email');
-                    } catch (e) {
-                      alert('Не удалось отправить код подтверждения');
-                    }
-                  }} className="inline-flex items-center px-3 py-2 bg-primary-600 text-white rounded text-sm">Отправить код</button>
-                </div>
-                <div className="text-xs text-gray-500 mt-2">Статус: {emailSettings.verified ? <span className="text-green-600">Подтверждён</span> : <span className="text-yellow-600">Не подтверждён</span>}</div>
-                {!emailSettings.verified && (
-                  <div className="mt-2 flex items-center space-x-2">
-                    <input value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="Введите код" className="border rounded px-3 py-2 text-sm" />
-                    <button onClick={async () => {
-                      if (!codeInput) return;
-                      try {
-                        await api.post('/notifications/email/verify', { code: codeInput });
-                        setEmailSettings(s => ({ ...s, verified: true }));
-                        alert('Email подтверждён');
-                      } catch (e) {
-                        alert('Неверный код');
-                      }
-                    }} className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded text-sm">Подтвердить</button>
+      </div>
+
+      {/* Separate Email Notifications block */}
+      <div className="bg-white rounded-lg shadow-md p-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-4">Уведомления по Email</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <div className="text-xs text-gray-500">Email для уведомлений</div>
+            <div className="flex items-center space-x-2 mt-1">
+              <input value={emailInput} onChange={(e) => setEmailInput(e.target.value)} className="border rounded px-3 py-2 text-sm w-full" placeholder="you@example.com" />
+              <button onClick={async () => {
+                if (!emailInput) return;
+                try {
+                  await api.post('/notifications/email/request', { email: emailInput });
+                  setEmailSettings(s => ({ ...s, email: emailInput, verified: false, enabled: true }));
+                  alert('Код подтверждения отправлен на указанный email');
+                } catch (e) {
+                  alert('Не удалось отправить код подтверждения');
+                }
+              }} className="inline-flex items-center px-3 py-2 bg-primary-600 text-white rounded text-sm">Отправить код</button>
+            </div>
+            <div className="text-xs text-gray-500 mt-2">Статус: {emailSettings.verified ? <span className="text-green-600">Подтверждён</span> : <span className="text-yellow-600">Не подтверждён</span>}</div>
+            {!emailSettings.verified && (
+              <div className="mt-2 flex items-center space-x-2">
+                <input value={codeInput} onChange={(e) => setCodeInput(e.target.value)} placeholder="Введите код" className="border rounded px-3 py-2 text-sm" />
+                <button onClick={async () => {
+                  if (!codeInput) return;
+                  try {
+                    await api.post('/notifications/email/verify', { code: codeInput });
+                    setEmailSettings(s => ({ ...s, verified: true }));
+                    alert('Email подтверждён');
+                  } catch (e) {
+                    alert('Неверный код');
+                  }
+                }} className="inline-flex items-center px-3 py-2 bg-green-600 text-white rounded text-sm">Подтвердить</button>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <div className="text-xs text-gray-500">Какие уведомления вы хотите получать</div>
+            <div className="mt-2 space-y-2">
+              {['new_invoice','new_ticket','ticket_message','ticket_status','new_recommendation'].map((ev) => (
+                <div key={ev} className="flex items-center justify-between bg-gray-50 p-3 rounded">
+                  <div className="text-sm text-gray-800">{ev === 'new_invoice' ? 'Новый счет' : ev === 'new_ticket' ? 'Новый тикет' : ev === 'ticket_message' ? 'Новый ответ в тикете' : ev === 'ticket_status' ? 'Изменение статуса тикета' : 'Новая рекомендация'}</div>
+                  <div className="flex items-center space-x-3">
+                    <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].email)} onChange={(e) => {
+                      const p = { ...(emailSettings.preferences || {}) };
+                      p[ev] = p[ev] || { email: false, telegram: false };
+                      p[ev].email = e.target.checked;
+                      setEmailSettings(s => ({ ...s, preferences: p }));
+                    }} /> <span>Email</span></label>
+                    <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].telegram)} onChange={(e) => {
+                      const p = { ...(emailSettings.preferences || {}) };
+                      p[ev] = p[ev] || { email: false, telegram: false };
+                      p[ev].telegram = e.target.checked;
+                      setEmailSettings(s => ({ ...s, preferences: p }));
+                    }} /> <span>Telegram</span></label>
                   </div>
-                )}
-              </div>
-
-              <div>
-                <div className="text-xs text-gray-500">Какие уведомления вы хотите получать по Email</div>
-                <div className="mt-2 space-y-2">
-                  {['new_invoice','new_ticket','ticket_message','ticket_status','new_recommendation'].map((ev) => (
-                    <div key={ev} className="flex items-center justify-between bg-gray-50 p-3 rounded">
-                      <div className="text-sm text-gray-800">{ev === 'new_invoice' ? 'Новый счет' : ev === 'new_ticket' ? 'Новый тикет' : ev === 'ticket_message' ? 'Новый ответ в тикете' : ev === 'ticket_status' ? 'Изменение статуса тикета' : 'Новая рекомендация'}</div>
-                      <div className="flex items-center space-x-3">
-                        <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].email)} onChange={(e) => {
-                          const p = { ...(emailSettings.preferences || {}) };
-                          p[ev] = p[ev] || { email: false, telegram: false };
-                          p[ev].email = e.target.checked;
-                          setEmailSettings(s => ({ ...s, preferences: p }));
-                        }} /> <span>Email</span></label>
-                        <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].telegram)} onChange={(e) => {
-                          const p = { ...(emailSettings.preferences || {}) };
-                          p[ev] = p[ev] || { email: false, telegram: false };
-                          p[ev].telegram = e.target.checked;
-                          setEmailSettings(s => ({ ...s, preferences: p }));
-                        }} /> <span>Telegram</span></label>
-                      </div>
-                    </div>
-                  ))}
                 </div>
+              ))}
+            </div>
 
-                <div className="mt-4">
-                  <button onClick={async () => {
-                    setSavingPrefs(true);
-                    try {
-                      await api.put('/notifications/preferences', { preferences: emailSettings.preferences || {}, enabled: !!emailSettings.enabled });
-                      alert('Настройки сохранены');
-                    } catch (e) {
-                      alert('Ошибка при сохранении настроек');
-                    } finally { setSavingPrefs(false); }
-                  }} className="px-4 py-2 bg-primary-600 text-white rounded text-sm">Сохранить настройки</button>
-                </div>
-              </div>
+            <div className="mt-4">
+              <button onClick={async () => {
+                setSavingPrefs(true);
+                try {
+                  await api.put('/notifications/preferences', { preferences: emailSettings.preferences || {}, enabled: !!emailSettings.enabled });
+                  alert('Настройки сохранены');
+                } catch (e) {
+                  alert('Ошибка при сохранении настроек');
+                } finally { setSavingPrefs(false); }
+              }} className="px-4 py-2 bg-primary-600 text-white rounded text-sm">Сохранить настройки</button>
             </div>
           </div>
         </div>
