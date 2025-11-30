@@ -368,7 +368,7 @@ const Layout = ({ children }) => {
                 </button>
 
                 {notificationsOpen && (
-                  <div className="origin-top-right absolute right-4 top-12 mt-2 w-80 max-h-96 overflow-auto rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-40">
+                  <div className="origin-top-right fixed inset-x-0 top-12 mx-2 mt-2 w-auto max-w-none max-h-[70vh] overflow-auto rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-50">
                     <div className="py-2">
                       <div className="px-3 pb-2 flex items-center justify-between">
                         <strong>Оповещения</strong>
