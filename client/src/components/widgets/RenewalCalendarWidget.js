@@ -179,9 +179,7 @@ const RenewalCalendarWidget = ({ clientId, api }) => {
         </div>
       )}
 
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-        <strong>Подсказка:</strong> Жёлтый - менее 60 дней, Красный - просрочено
-      </div>
+      {/* Подсказка удалена по запросу */}
     </div>
   );
 };
