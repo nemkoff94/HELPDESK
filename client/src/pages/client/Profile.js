@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import api from '../../api';
 import formatDate from '../../utils/formatDate';
 import TelegramNotificationsWidget from '../../components/widgets/TelegramNotificationsWidget';
+import CustomCheckbox from '../../components/CustomCheckbox';
 
 const Profile = () => {
   const { user } = useAuth();
@@ -211,18 +212,32 @@ const Profile = () => {
             <div key={ev} className="flex items-center justify-between bg-gray-50 p-3 rounded">
               <div className="text-sm text-gray-800">{ev === 'new_invoice' ? 'Новый счет' : ev === 'new_ticket' ? 'Новый тикет' : ev === 'ticket_message' ? 'Новый ответ в тикете' : ev === 'ticket_status' ? 'Изменение статуса тикета' : 'Новая рекомендация'}</div>
               <div className="flex items-center space-x-3">
-                <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].email)} disabled={!emailSettings.verified} onChange={(e) => {
-                  const p = { ...(emailSettings.preferences || {}) };
-                  p[ev] = p[ev] || { email: false, telegram: false };
-                  p[ev].email = e.target.checked;
-                  setEmailSettings(s => ({ ...s, preferences: p }));
-                }} /> <span>Email</span></label>
-                <label className="flex items-center space-x-2 text-sm"><input type="checkbox" checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].telegram)} onChange={(e) => {
-                  const p = { ...(emailSettings.preferences || {}) };
-                  p[ev] = p[ev] || { email: false, telegram: false };
-                  p[ev].telegram = e.target.checked;
-                  setEmailSettings(s => ({ ...s, preferences: p }));
-                }} /> <span>Telegram</span></label>
+                <label className="flex items-center space-x-2 text-sm">
+                  <CustomCheckbox
+                    checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].email)}
+                    disabled={!emailSettings.verified}
+                    onChange={(val) => {
+                      const p = { ...(emailSettings.preferences || {}) };
+                      p[ev] = p[ev] || { email: false, telegram: false };
+                      p[ev].email = val;
+                      setEmailSettings(s => ({ ...s, preferences: p }));
+                    }}
+                  />
+                  <span>Email</span>
+                </label>
+
+                <label className="flex items-center space-x-2 text-sm">
+                  <CustomCheckbox
+                    checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].telegram)}
+                    onChange={(val) => {
+                      const p = { ...(emailSettings.preferences || {}) };
+                      p[ev] = p[ev] || { email: false, telegram: false };
+                      p[ev].telegram = val;
+                      setEmailSettings(s => ({ ...s, preferences: p }));
+                    }}
+                  />
+                  <span>Telegram</span>
+                </label>
               </div>
             </div>
           ))}
