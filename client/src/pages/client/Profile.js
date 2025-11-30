@@ -11,6 +11,7 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [emailSettings, setEmailSettings] = useState({ email: '', verified: false, enabled: false, preferences: {} });
+  const [initialPreferences, setInitialPreferences] = useState({});
   const [emailInput, setEmailInput] = useState('');
   const [codeInput, setCodeInput] = useState('');
   const [savingPrefs, setSavingPrefs] = useState(false);
@@ -31,6 +32,8 @@ const Profile = () => {
             enabled: !!r2.data.enabled,
             preferences: r2.data.preferences || {}
           });
+          // deep clone to avoid shared references so later mutations won't affect initialPreferences
+          setInitialPreferences(JSON.parse(JSON.stringify(r2.data.preferences || {})));
           setEmailInput(r2.data.email || '');
         } catch (e) {
           // ignore
@@ -43,6 +46,17 @@ const Profile = () => {
     };
     fetchClient();
   }, [user]);
+
+  // stable stringify to compare preferences objects regardless of key order
+  const stableStringify = (obj) => {
+    if (obj === null || typeof obj !== 'object') return JSON.stringify(obj);
+    if (Array.isArray(obj)) return '[' + obj.map(stableStringify).join(',') + ']';
+    const keys = Object.keys(obj).sort();
+    return '{' + keys.map(k => JSON.stringify(k) + ':' + stableStringify(obj[k])).join(',') + '}';
+  };
+
+  const currentPrefs = emailSettings.preferences || {};
+  const hasPreferenceChanges = stableStringify(currentPrefs) !== stableStringify(initialPreferences || {});
 
   if (loading) {
     return (
@@ -207,8 +221,8 @@ const Profile = () => {
       {/* Email Notifications - Preferences */}
       <div className="bg-white rounded-lg shadow-md p-6">
         <h2 className="text-lg font-semibold text-gray-800 mb-4">Какие уведомления вы хотите получать</h2>
-        <div className="mt-2 space-y-2">
-          {['new_invoice','new_ticket','ticket_message','ticket_status','new_recommendation'].map((ev) => (
+            <div className="mt-2 space-y-2">
+              {['new_invoice','new_ticket','ticket_message','ticket_status','new_recommendation'].map((ev) => (
             <div key={ev} className="flex items-center justify-between bg-gray-50 p-3 rounded">
               <div className="text-sm text-gray-800">{ev === 'new_invoice' ? 'Новый счет' : ev === 'new_ticket' ? 'Новый тикет' : ev === 'ticket_message' ? 'Новый ответ в тикете' : ev === 'ticket_status' ? 'Изменение статуса тикета' : 'Новая рекомендация'}</div>
               <div className="flex items-center space-x-3">
@@ -218,7 +232,7 @@ const Profile = () => {
                     disabled={!emailSettings.verified}
                     onChange={(val) => {
                       const p = { ...(emailSettings.preferences || {}) };
-                      p[ev] = p[ev] || { email: false, telegram: false };
+                      p[ev] = { ...(p[ev] || { email: false, telegram: false }) };
                       p[ev].email = val;
                       setEmailSettings(s => ({ ...s, preferences: p }));
                     }}
@@ -231,7 +245,7 @@ const Profile = () => {
                     checked={!!(emailSettings.preferences && emailSettings.preferences[ev] && emailSettings.preferences[ev].telegram)}
                     onChange={(val) => {
                       const p = { ...(emailSettings.preferences || {}) };
-                      p[ev] = p[ev] || { email: false, telegram: false };
+                      p[ev] = { ...(p[ev] || { email: false, telegram: false }) };
                       p[ev].telegram = val;
                       setEmailSettings(s => ({ ...s, preferences: p }));
                     }}
@@ -244,15 +258,22 @@ const Profile = () => {
         </div>
 
         <div className="mt-4">
-          <button onClick={async () => {
-            setSavingPrefs(true);
-            try {
-              await api.put('/notifications/preferences', { preferences: emailSettings.preferences || {}, enabled: !!emailSettings.enabled });
-              alert('Настройки сохранены');
-            } catch (e) {
-              alert('Ошибка при сохранении настроек');
-            } finally { setSavingPrefs(false); }
-          }} className="px-4 py-2 bg-primary-600 text-white rounded text-sm">Сохранить настройки</button>
+          <button
+            onClick={async () => {
+              if (!hasPreferenceChanges) return;
+              setSavingPrefs(true);
+              try {
+                await api.put('/notifications/preferences', { preferences: emailSettings.preferences || {}, enabled: !!emailSettings.enabled });
+                setInitialPreferences(emailSettings.preferences || {});
+                alert('Настройки сохранены');
+              } catch (e) {
+                alert('Ошибка при сохранении настроек');
+              } finally { setSavingPrefs(false); }
+            }}
+            disabled={!hasPreferenceChanges || savingPrefs}
+            className={`px-4 py-2 rounded text-sm ${hasPreferenceChanges && !savingPrefs ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500 cursor-not-allowed'}`}>
+            {savingPrefs ? 'Сохранение...' : 'Сохранить настройки'}
+          </button>
         </div>
       </div>
     </div>
