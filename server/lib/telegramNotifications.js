@@ -5,7 +5,22 @@ const { sendClientNotification, sendAdminNotification } = require('./telegramBot
  */
 const notifyClientNewTicket = async (db, clientId, ticketId, ticketTitle) => {
   const message = `🎫 <b>Создан новый тикет</b>\n\n<b>${ticketTitle}</b>\n\nТикет #${ticketId} \n\nВы можете следить за обновлениями в панели https://obs-panel.ru`;
-  return await sendClientNotification(db, clientId, message);
+  try {
+    await sendClientNotification(db, clientId, message);
+  } catch (e) {
+    console.error('Telegram send error (new ticket):', e);
+  }
+
+  // Добавляем внутриплатформенное уведомление
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['client', clientId, 'new_ticket', 'Создан новый тикет', ticketTitle, 'ticket', ticketId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (new ticket) error:', e);
+  }
+  return;
 };
 
 /**
@@ -13,7 +28,21 @@ const notifyClientNewTicket = async (db, clientId, ticketId, ticketTitle) => {
  */
 const notifyClientTicketMessage = async (db, clientId, ticketId, ticketTitle, senderName, message) => {
   const text = `💬 <b>Новое сообщение в тикете</b>\n\n<b>${ticketTitle}</b>\n\n<b>От:</b> ${senderName}\n<b>Сообщение:</b>\n${message.substring(0, 200)}${message.length > 200 ? '...' : ''}\n\nТикет #${ticketId}`;
-  return await sendClientNotification(db, clientId, text);
+  try {
+    await sendClientNotification(db, clientId, text);
+  } catch (e) {
+    console.error('Telegram send error (ticket message):', e);
+  }
+
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['client', clientId, 'ticket_message', `Новое сообщение в тикете: ${ticketTitle}`, `${senderName}: ${message.substring(0,200)}`, 'ticket', ticketId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (ticket message) error:', e);
+  }
+  return;
 };
 
 /**
@@ -26,9 +55,22 @@ const notifyClientTicketStatusChange = async (db, clientId, ticketId, ticketTitl
     'resolved': 'Решен',
     'closed': 'Закрыт'
   }[newStatus] || newStatus;
-
   const message = `📋 <b>Изменение статуса тикета</b>\n\n<b>${ticketTitle}</b>\n\n<b>Новый статус:</b> ${statusText}\n\nТикет #${ticketId}`;
-  return await sendClientNotification(db, clientId, message);
+  try {
+    await sendClientNotification(db, clientId, message);
+  } catch (e) {
+    console.error('Telegram send error (ticket status):', e);
+  }
+
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['client', clientId, 'ticket_status', `Статус тикета: ${ticketTitle}`, `Новый статус: ${statusText}`, 'ticket', ticketId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (ticket status) error:', e);
+  }
+  return;
 };
 
 /**
@@ -36,7 +78,43 @@ const notifyClientTicketStatusChange = async (db, clientId, ticketId, ticketTitl
  */
 const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => {
   const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${amount.toLocaleString('ru-RU')} ₽\n<b>Дата:</b> ${new Date(date).toLocaleDateString('ru-RU')}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать по ссылке https://obs-panel.ru`;
-  return await sendClientNotification(db, clientId, message);
+  try {
+    await sendClientNotification(db, clientId, message);
+  } catch (e) {
+    console.error('Telegram send error (new invoice):', e);
+  }
+
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['client', clientId, 'new_invoice', 'Новый счет на оплату', `Сумма: ${amount.toLocaleString('ru-RU')} ₽`, 'invoice', invoiceId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (new invoice) error:', e);
+  }
+  return;
+};
+
+/**
+ * Уведомление о новой рекомендации
+ */
+const notifyClientNewRecommendation = async (db, clientId, recommendationId, title, description) => {
+  const message = `💡 <b>Новая рекомендация</b>\n\n<b>${title}</b>\n\n${(description||'').substring(0,200)}\n\nПерейдите в панель, чтобы посмотреть подробности.`;
+  try {
+    await sendClientNotification(db, clientId, message);
+  } catch (e) {
+    console.error('Telegram send error (new recommendation):', e);
+  }
+
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['client', clientId, 'new_recommendation', `Новая рекомендация: ${title}`, (description||'').substring(0,200), 'recommendation', recommendationId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (new recommendation) error:', e);
+  }
+  return;
 };
 
 /**
@@ -44,7 +122,23 @@ const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => 
  */
 const notifyAdminNewTicket = async (db, userId, clientName, ticketId, ticketTitle, ticketDescription) => {
   const message = `🎫 <b>Новый тикет от клиента</b>\n\n<b>Клиент:</b> ${clientName}\n<b>Название:</b> ${ticketTitle}\n\n<b>Описание:</b>\n${ticketDescription.substring(0, 200)}${ticketDescription.length > 200 ? '...' : ''}\n\nТикет #${ticketId}`;
-  return await sendAdminNotification(db, userId, message);
+  try {
+    await sendAdminNotification(db, userId, message);
+  } catch (e) {
+    console.error('Telegram send error (admin new ticket):', e);
+  }
+
+  // Внутриплатформенное уведомление для администратора
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['user', userId, 'new_ticket', `Новый тикет от ${clientName}`, ticketTitle, 'ticket', ticketId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (admin new ticket) error:', e);
+  }
+
+  return;
 };
 
 /**
@@ -52,7 +146,23 @@ const notifyAdminNewTicket = async (db, userId, clientName, ticketId, ticketTitl
  */
 const notifyAdminTicketMessage = async (db, userId, clientName, ticketId, ticketTitle, senderName, message) => {
   const text = `💬 <b>Новое сообщение в тикете от клиента</b>\n\n<b>Клиент:</b> ${clientName}\n<b>Тикет:</b> ${ticketTitle}\n<b>От:</b> ${senderName}\n\n<b>Сообщение:</b>\n${message.substring(0, 200)}${message.length > 200 ? '...' : ''}\n\nТикет #${ticketId}`;
-  return await sendAdminNotification(db, userId, text);
+  try {
+    await sendAdminNotification(db, userId, text);
+  } catch (e) {
+    console.error('Telegram send error (admin ticket message):', e);
+  }
+
+  // Внутриплатформенное уведомление для администратора
+  try {
+    db.run(
+      `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ['user', userId, 'ticket_message', `Новое сообщение в тикете: ${ticketTitle}`, `${senderName}: ${message.substring(0,200)}`, 'ticket', ticketId]
+    );
+  } catch (e) {
+    console.error('DB insert notification (admin ticket message) error:', e);
+  }
+
+  return;
 };
 
 module.exports = {
@@ -60,6 +170,7 @@ module.exports = {
   notifyClientTicketMessage,
   notifyClientTicketStatusChange,
   notifyClientNewInvoice,
+  notifyClientNewRecommendation,
   notifyAdminNewTicket,
   notifyAdminTicketMessage
 };

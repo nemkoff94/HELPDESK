@@ -17,6 +17,7 @@ const tasksRouter = require('./routes/tasks');
 const servicesRouter = require('./routes/services');
 const { router: widgetsRouter } = require('./routes/widgets');
 const telegramRouter = require('./routes/telegram');
+const notificationsRouter = require('./routes/notifications');
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -86,6 +87,7 @@ app.use('/api/tasks', tasksRouter);
 app.use('/api/services', servicesRouter);
 app.use('/api/widgets', widgetsRouter);
 app.use('/api', telegramRouter);
+app.use('/api/notifications', notificationsRouter);
 
 // Start Server
 const server = app.listen(PORT, () => {

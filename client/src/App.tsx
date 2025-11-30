@@ -19,6 +19,7 @@ import NewInvoice from './pages/admin/NewInvoice';
 import ServicesList from './pages/admin/ServicesList';
 import AdminProfile from './pages/admin/AdminProfile';
 import ClientWidgetsManager from './pages/admin/ClientWidgetsManager';
+import AdminTicketsList from './pages/admin/TicketsList';
 
 // Client pages
 import Dashboard from './pages/client/Dashboard';
@@ -26,6 +27,7 @@ import ClientTicketDetailComponent from './pages/client/TicketDetail';
 import ClientNewTicketComponent from './pages/client/NewTicket';
 import TicketsList from './pages/client/TicketsList';
 import InvoicesList from './pages/client/InvoicesList';
+import ClientProfilePage from './pages/client/Profile';
 
 // Specialist pages
 import SpecialistClientsListComponent from './pages/specialist/ClientsList';
@@ -101,6 +103,14 @@ function App() {
               }
             />
             <Route
+              path="/admin/tickets"
+              element={
+                <ProtectedRoute allowedRoles={['admin']}>
+                  <AdminTicketsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/admin/tasks/:id"
               element={
                 <ProtectedRoute allowedRoles={['admin', 'specialist']}>
@@ -171,6 +181,14 @@ function App() {
               element={
                 <ProtectedRoute allowedRoles={['client']}>
                   <TicketsList />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/client/profile"
+              element={
+                <ProtectedRoute allowedRoles={['client']}>
+                  <ClientProfilePage />
                 </ProtectedRoute>
               }
             />

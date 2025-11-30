@@ -175,6 +175,46 @@ router.get('/', authenticateToken, (req, res) => {
   });
 });
 
+// Поиск тикетов (query param: q)
+router.get('/search', authenticateToken, (req, res) => {
+  const q = (req.query.q || '').trim();
+  const db = req.db;
+  const userRole = req.user.role;
+  const userId = req.user.id;
+
+  if (!q) {
+    return res.json([]);
+  }
+
+  const like = `%${q.replace(/%/g, '\\%')}%`;
+
+  if (userRole === 'client') {
+    db.all(
+      `SELECT id, title, status, created_at FROM tickets WHERE client_id = ? AND title LIKE ? ORDER BY created_at DESC LIMIT 10`,
+      [userId, like],
+      (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Ошибка при поиске тикетов' });
+        res.json(rows || []);
+      }
+    );
+  } else {
+    // staff/admin: search across all tickets, but limit
+    db.all(
+      `SELECT t.id, t.title, t.status, t.created_at, c.project_name as client_name
+       FROM tickets t
+       LEFT JOIN clients c ON t.client_id = c.id
+       WHERE t.title LIKE ?
+       ORDER BY t.created_at DESC
+       LIMIT 10`,
+      [like],
+      (err, rows) => {
+        if (err) return res.status(500).json({ error: 'Ошибка при поиске тикетов' });
+        res.json(rows || []);
+      }
+    );
+  }
+});
+
 // Получить тикеты клиента
 router.get('/client/:clientId', authenticateToken, (req, res) => {
   const { clientId } = req.params;

@@ -304,7 +304,16 @@ router.post('/recommendations/:clientId/add', authenticateToken, requireRole('ad
           if (err) {
             return res.status(500).json({ error: 'Ошибка при добавлении рекомендации' });
           }
-          res.json({ id: this.lastID, message: 'Рекомендация добавлена' });
+          const recommendationId = this.lastID;
+          // Уведомим клиента внутри приложения и через Telegram (не ждём результат)
+          try {
+            const { notifyClientNewRecommendation } = require('../lib/telegramNotifications');
+            notifyClientNewRecommendation(db, clientId, recommendationId, title, description || '').catch(err => console.error('notifyClientNewRecommendation error:', err));
+          } catch (e) {
+            console.error('Ошибка при отправке уведомления о новой рекомендации:', e);
+          }
+
+          res.json({ id: recommendationId, message: 'Рекомендация добавлена' });
         }
       );
     }

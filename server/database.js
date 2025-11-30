@@ -276,6 +276,20 @@ const initializeDatabase = (db) => {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Встроенные внутриплатформенные уведомления
+    db.run(`CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      recipient_type TEXT NOT NULL CHECK(recipient_type IN ('client','user')),
+      recipient_id INTEGER NOT NULL,
+      type TEXT NOT NULL,
+      title TEXT,
+      message TEXT,
+      reference_type TEXT,
+      reference_id INTEGER,
+      read INTEGER DEFAULT 0,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
+
     // Создание тестового администратора (пароль: admin123)
     const adminPassword = bcrypt.hashSync('admin123', 10);
     db.run(`INSERT OR IGNORE INTO users (email, password, role, name) 
