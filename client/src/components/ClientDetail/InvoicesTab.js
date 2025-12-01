@@ -1,5 +1,6 @@
 import React from 'react';
 import formatDate from '../../utils/formatDate';
+import { getFileUrl } from '../../api';
 
 const InvoicesTab = ({ invoices, user, id, navigate, onStatusChange, onDeleteInvoice }) => {
   return (
@@ -64,7 +65,7 @@ const InvoicesTab = ({ invoices, user, id, navigate, onStatusChange, onDeleteInv
               )}
               {invoice.file_path && (
                 <a
-                  href={`http://localhost:5001${invoice.file_path}`}
+                  href={getFileUrl(invoice.file_path)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-primary-600 hover:text-primary-700 text-sm px-2 py-1 border border-primary-600 rounded text-center"

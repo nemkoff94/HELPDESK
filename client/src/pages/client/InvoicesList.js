@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../../api';
+import api, { getFileUrl } from '../../api';
 import formatDate from '../../utils/formatDate';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -98,7 +98,7 @@ const InvoicesList = () => {
                   </span>
                   {invoice.file_path && (
                     <a
-                      href={`http://localhost:5001${invoice.file_path}`}
+                      href={getFileUrl(invoice.file_path)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-primary-600 hover:text-primary-700 text-sm"

@@ -50,4 +50,19 @@ api.interceptors.response.use(
 
 export default api;
 
+export const getFileUrl = (path) => {
+  if (!path) return '';
+  const FILES_HOST = process.env.REACT_APP_FILES_HOST;
+  if (FILES_HOST) {
+    return `${FILES_HOST}${path}`;
+  }
+  const hostname = window.location.hostname;
+  // Local development
+  if (hostname === 'localhost' || hostname === '127.0.0.1') {
+    return `http://localhost:5001${path}`;
+  }
+  // Default production file host
+  return `https://obs-panel.ru${path}`;
+};
+
 
