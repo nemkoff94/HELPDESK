@@ -1,4 +1,4 @@
-const APP_NAME = 'OBS Panel';
+const APP_NAME = 'Обсидиан';
 const APP_URL = 'https://obs-panel.ru';
 
 const baseStyles = `
@@ -69,18 +69,21 @@ function ticketStatusTemplate({ ticketTitle, ticketId, statusText }) {
   return { subject, text, html };
 }
 
-function newInvoiceTemplate({ invoiceId, amount, date }) {
-  const subject = `Новый счет #${invoiceId} — ${amount.toLocaleString('ru-RU')} ₽`;
-  const text = `Новый счет на оплату\nСумма: ${amount.toLocaleString('ru-RU')} ₽\nДата: ${new Date(date).toLocaleDateString('ru-RU')}\nСчет #${invoiceId}`;
+function newInvoiceTemplate({ invoiceId, amount, date, comment }) {
+  const subject = `Вам выставлен новый счет от Обсидиан.`;
+  const formattedDate = date ? new Date(date).toLocaleDateString('ru-RU') : '';
+  const amountStr = amount ? amount.toLocaleString('ru-RU') + ' ₽' : '';
+  const safeComment = escapeHtml(comment || '—');
+
+  const text = `Здравствуйте. Вам выставлен новый счет на сумму ${amountStr} от ${formattedDate}. Комментарий к счету: ${comment || 'нет'}. Счет находится во вложениях к письму.\n\nВы также можете посмотреть список выставленных счетов и их статусы в панели управления: ${APP_URL}/client/invoices`;
+
   const html = wrapHtml(subject, `
-    <p>Здравствуйте!</p>
-    <p>Вам выставлен новый счёт.</p>
-    <ul>
-      <li><strong>Сумма:</strong> ${amount.toLocaleString('ru-RU')} ₽</li>
-      <li><strong>Дата:</strong> ${new Date(date).toLocaleDateString('ru-RU')}</li>
-      <li><strong>Номер счета:</strong> #${invoiceId}</li>
-    </ul>
-    <p><a class="btn" href="${APP_URL}/client/invoices/${invoiceId}">Посмотреть счёт</a></p>
+    <p>Здравствуйте.</p>
+    <p>Вам выставлен новый счет на сумму <strong>${amountStr}</strong> от <strong>${formattedDate}</strong>.</p>
+    <p><strong>Комментарий к счету:</strong> ${safeComment}</p>
+    <p>Счет находится во вложениях к письму.</p>
+    <p>Вы также можете посмотреть список выставленных счетов и их статусы в панели управления.</p>
+    <p><a class="btn" href="${APP_URL}/client/invoices">Перейти</a></p>
   `);
   return { subject, text, html };
 }

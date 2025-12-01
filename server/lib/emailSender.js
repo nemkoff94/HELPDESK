@@ -1,5 +1,7 @@
 const nodemailer = require('nodemailer');
 const templates = require('./emailTemplates');
+const path = require('path');
+const fs = require('fs');
 
 // Настройки транспорта через env переменные. В проде задавайте реальные SMTP.
 const SMTP_HOST = process.env.SMTP_HOST;
@@ -36,7 +38,7 @@ if (SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS) {
 
 const DEFAULT_FROM = process.env.EMAIL_FROM || 'noreply@obs-panel.ru';
 
-async function sendEmail(to, subject, text, html) {
+async function sendEmail(to, subject, text, html, attachments) {
   if (!to) throw new Error('No recipient provided for email');
   const mailOptions = {
     from: DEFAULT_FROM,
@@ -45,6 +47,9 @@ async function sendEmail(to, subject, text, html) {
     text: text || undefined,
     html: html || undefined
   };
+  if (attachments && Array.isArray(attachments) && attachments.length) {
+    mailOptions.attachments = attachments;
+  }
   return transporter.sendMail(mailOptions);
 }
 
@@ -99,7 +104,29 @@ async function sendClientEmail(db, clientId, notificationType, subject, text, ht
           }
         }
 
-        await sendEmail(recipient, finalSubject, finalText, finalHtml);
+        // Attach invoice PDF if available and this is an invoice notification
+        let attachments = [];
+        if (notificationType === 'new_invoice' && templateData && templateData.invoiceId) {
+          try {
+            const invoiceRow = await new Promise((res, rej) => {
+              db.get('SELECT file_path FROM invoices WHERE id = ?', [templateData.invoiceId], (err, row) => {
+                if (err) return rej(err);
+                res(row);
+              });
+            });
+            if (invoiceRow && invoiceRow.file_path) {
+              const rel = invoiceRow.file_path.startsWith('/') ? invoiceRow.file_path.slice(1) : invoiceRow.file_path;
+              const fullPath = path.join(__dirname, '..', rel);
+              if (fs.existsSync(fullPath)) {
+                attachments.push({ filename: path.basename(fullPath), path: fullPath });
+              }
+            }
+          } catch (fetchErr) {
+            console.error('Error fetching invoice file for attachment:', fetchErr);
+          }
+        }
+
+        await sendEmail(recipient, finalSubject, finalText, finalHtml, attachments.length ? attachments : undefined);
         resolve(true);
       } catch (e) {
         console.error('Error sending client email:', e);

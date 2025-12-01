@@ -103,7 +103,23 @@ const notifyClientTicketStatusChange = async (db, clientId, ticketId, ticketTitl
  * Форматирует и отправляет уведомление о новом счете клиенту
  */
 const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => {
-  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${amount.toLocaleString('ru-RU')} ₽\n<b>Дата:</b> ${new Date(date).toLocaleDateString('ru-RU')}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать по ссылке https://obs-panel.ru`;
+  let invoiceRow = null;
+  try {
+    invoiceRow = await new Promise((res, rej) => {
+      db.get('SELECT * FROM invoices WHERE id = ?', [invoiceId], (err, row) => {
+        if (err) return rej(err);
+        res(row);
+      });
+    });
+  } catch (e) {
+    console.error('Error fetching invoice row for notification:', e);
+  }
+
+  const formattedAmount = amount ? amount.toLocaleString('ru-RU') + ' ₽' : '';
+  const formattedDate = date ? new Date(date).toLocaleDateString('ru-RU') : '';
+  const comment = invoiceRow && invoiceRow.comment ? invoiceRow.comment : '';
+
+  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${formattedAmount}\n<b>Дата:</b> ${formattedDate}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать по ссылке https://obs-panel.ru`;
   try {
     await sendClientNotification(db, clientId, message);
   } catch (e) {
@@ -112,8 +128,8 @@ const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => 
 
   // Email
   try {
-    const tpl = templates.newInvoiceTemplate({ invoiceId, amount, date });
-    await sendClientEmail(db, clientId, 'new_invoice', tpl.subject, tpl.text, tpl.html, { invoiceId, amount, date });
+    const tpl = templates.newInvoiceTemplate({ invoiceId, amount, date, comment });
+    await sendClientEmail(db, clientId, 'new_invoice', tpl.subject, tpl.text, tpl.html, { invoiceId, amount, date, comment });
   } catch (e) {
     console.error('Email send error (new invoice):', e);
   }
@@ -121,7 +137,7 @@ const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => 
   try {
     db.run(
       `INSERT INTO notifications (recipient_type, recipient_id, type, title, message, reference_type, reference_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      ['client', clientId, 'new_invoice', 'Новый счет на оплату', `Сумма: ${amount.toLocaleString('ru-RU')} ₽`, 'invoice', invoiceId]
+      ['client', clientId, 'new_invoice', 'Новый счет на оплату', `Сумма: ${formattedAmount}`, 'invoice', invoiceId]
     );
   } catch (e) {
     console.error('DB insert notification (new invoice) error:', e);
