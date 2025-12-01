@@ -119,9 +119,18 @@ const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => 
   const formattedDate = date ? new Date(date).toLocaleDateString('ru-RU') : '';
   const comment = invoiceRow && invoiceRow.comment ? invoiceRow.comment : '';
 
-  const message = `💰 <b>Новый счет на оплату</b>\n\n<b>Сумма:</b> ${formattedAmount}\n<b>Дата:</b> ${formattedDate}\n\nСчет #${invoiceId} \n\nВы можете просмотреть и скачать по ссылке https://obs-panel.ru`;
+  const message = `Здравствуйте. Вам выставлен новый счет на сумму ${formattedAmount} от ${formattedDate}. Комментарий к счету: ${comment}. Вы можете посмотреть список выставленных счетов и их статусы в панели управления.`;
   try {
-    await sendClientNotification(db, clientId, message);
+    const options = {};
+    if (invoiceRow && invoiceRow.file_path) {
+      options.documentPath = invoiceRow.file_path;
+      // try to set filename if available
+      try {
+        const path = require('path');
+        options.filename = path.basename(invoiceRow.file_path);
+      } catch (e) {}
+    }
+    await sendClientNotification(db, clientId, message, options);
   } catch (e) {
     console.error('Telegram send error (new invoice):', e);
   }

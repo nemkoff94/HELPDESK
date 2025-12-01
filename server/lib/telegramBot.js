@@ -1,6 +1,8 @@
 const { Telegraf } = require('telegraf');
 const QRCode = require('qrcode');
 const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
 
 let bot = null;
 
@@ -180,14 +182,26 @@ const generateQRCode = async (deepLink) => {
 /**
  * Отправляет сообщение клиенту в Telegram
  */
-const sendClientNotification = async (db, clientId, message) => {
+/**
+ * Отправляет сообщение клиенту в Telegram. Если указан опциональный документ
+ * (путь или Buffer), документ будет отправлен с подписью (caption).
+ *
+ * @param {object} db - sqlite db
+ * @param {number} clientId
+ * @param {string} message - HTML-formatted message
+ * @param {object} [options]
+ * @param {string} [options.documentPath] - путь к файлу на диске
+ * @param {Buffer} [options.documentBuffer] - данные файла в памяти
+ * @param {string} [options.filename] - имя файла для отправки
+ */
+const sendClientNotification = async (db, clientId, message, options = {}) => {
   return new Promise((resolve, reject) => {
     db.get(
       'SELECT telegram_user_id FROM client_telegram WHERE client_id = ? AND enabled = 1',
       [clientId],
       async (err, row) => {
         if (err) return reject(err);
-        
+
         if (!row || !row.telegram_user_id) {
           return resolve({ success: false, reason: 'not_connected' });
         }
@@ -197,10 +211,40 @@ const sendClientNotification = async (db, clientId, message) => {
         }
 
         try {
+          // If a document path or buffer provided, send document with caption
+          if ((options.documentPath || options.documentBuffer)) {
+            let input = null;
+            const filename = options.filename || (options.documentPath ? path.basename(options.documentPath) : 'document.pdf');
+
+            if (options.documentBuffer) {
+              input = { source: options.documentBuffer, filename };
+            } else {
+              // resolve path relative to project root if needed
+              let fullPath = options.documentPath;
+              if (!path.isAbsolute(fullPath)) {
+                fullPath = path.resolve(__dirname, '..', fullPath);
+              }
+              if (!fs.existsSync(fullPath)) {
+                // fallback: try as-is
+                if (!fs.existsSync(options.documentPath)) {
+                  console.warn('Document not found for Telegram send:', fullPath);
+                  // send text message instead
+                  await bot.telegram.sendMessage(row.telegram_user_id, message, { parse_mode: 'HTML' });
+                  return resolve({ success: true, sentDocument: false });
+                }
+              }
+              input = { source: fs.createReadStream(fullPath), filename };
+            }
+
+            await bot.telegram.sendDocument(row.telegram_user_id, input, { caption: message, parse_mode: 'HTML' });
+            return resolve({ success: true, sentDocument: true });
+          }
+
+          // otherwise send normal text message
           await bot.telegram.sendMessage(row.telegram_user_id, message, {
             parse_mode: 'HTML'
           });
-          resolve({ success: true });
+          resolve({ success: true, sentDocument: false });
         } catch (error) {
           console.error('Ошибка при отправке сообщения:', error);
           reject(error);
