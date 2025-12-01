@@ -3,6 +3,8 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const http = require('http');
+const https = require('https');
 
 let bot = null;
 
@@ -195,6 +197,41 @@ const generateQRCode = async (deepLink) => {
  * @param {string} [options.filename] - имя файла для отправки
  */
 const sendClientNotification = async (db, clientId, message, options = {}) => {
+  const downloadFileToBuffer = (fileUrl) => {
+    return new Promise((resolve, reject) => {
+      try {
+        const lib = fileUrl.startsWith('https') ? https : http;
+        lib.get(fileUrl, (res) => {
+          if (res.statusCode && res.statusCode >= 400) {
+            return reject(new Error('Failed to download file, status ' + res.statusCode));
+          }
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => {
+            const buffer = Buffer.concat(chunks);
+            let filename;
+            try {
+              const disposition = res.headers['content-disposition'];
+              if (disposition) {
+                const match = /filename="?([^";]+)"?/.exec(disposition);
+                if (match) filename = match[1];
+              }
+            } catch (e) {}
+            if (!filename) {
+              try {
+                filename = path.basename(new URL(fileUrl).pathname) || 'document.pdf';
+              } catch (e) {
+                filename = 'document.pdf';
+              }
+            }
+            resolve({ buffer, filename });
+          });
+        }).on('error', (err) => reject(err));
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
   return new Promise((resolve, reject) => {
     db.get(
       'SELECT telegram_user_id FROM client_telegram WHERE client_id = ? AND enabled = 1',
@@ -214,10 +251,21 @@ const sendClientNotification = async (db, clientId, message, options = {}) => {
           // If a document path or buffer provided, send document with caption
           if ((options.documentPath || options.documentBuffer)) {
             let input = null;
-            const filename = options.filename || (options.documentPath ? path.basename(options.documentPath) : 'document.pdf');
+            let filename = options.filename || 'document.pdf';
 
             if (options.documentBuffer) {
               input = { source: options.documentBuffer, filename };
+            } else if (typeof options.documentPath === 'string' && (options.documentPath.startsWith('http://') || options.documentPath.startsWith('https://'))) {
+              // download remote file
+              try {
+                const dl = await downloadFileToBuffer(options.documentPath);
+                filename = options.filename || dl.filename || filename;
+                input = { source: dl.buffer, filename };
+              } catch (err) {
+                console.warn('Failed to download document for Telegram send:', err.message || err);
+                await bot.telegram.sendMessage(row.telegram_user_id, message, { parse_mode: 'HTML' });
+                return resolve({ success: true, sentDocument: false });
+              }
             } else {
               // resolve path relative to project root if needed
               let fullPath = options.documentPath;
@@ -233,6 +281,7 @@ const sendClientNotification = async (db, clientId, message, options = {}) => {
                   return resolve({ success: true, sentDocument: false });
                 }
               }
+              filename = options.filename || path.basename(fullPath) || filename;
               input = { source: fs.createReadStream(fullPath), filename };
             }
 

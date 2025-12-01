@@ -119,7 +119,7 @@ const notifyClientNewInvoice = async (db, clientId, invoiceId, amount, date) => 
   const formattedDate = date ? new Date(date).toLocaleDateString('ru-RU') : '';
   const comment = invoiceRow && invoiceRow.comment ? invoiceRow.comment : '';
 
-  const message = `Здравствуйте. Вам выставлен новый счет на сумму ${formattedAmount} от ${formattedDate}. Комментарий к счету: ${comment}. Вы можете посмотреть список выставленных счетов и их статусы в панели управления.`;
+  const message = `Здравствуйте.\n\nВам выставлен новый счет на сумму ${formattedAmount} от ${formattedDate}.\n\nКомментарий к счету: ${comment}.\n\nВы можете просмотреть выставленные счета и их статусы по ссылке https://obs-panel.ru`;
   try {
     const options = {};
     if (invoiceRow && invoiceRow.file_path) {
